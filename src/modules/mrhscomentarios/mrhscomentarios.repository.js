@@ -8,17 +8,13 @@ import pool from "../../config/db.js";
  * - Inserir comentários
  * - Listar comentários de uma MRH
  * - Isolar completamente a camada de dados
- *
- * Observações:
- * - Nenhum log direto (logs ficam no service/controller)
- * - Erros são encapsulados para não vazar detalhes do banco
  */
 class MrhsComentariosRepository {
   /**
    * Insere um novo comentário para uma MRH
    *
    * @param {Object} params
-   * @param {number} params.mrhId - ID da MRH
+   * @param {number} params.mrhId - ID da MRH (ad_id)
    * @param {string} params.comentario - Texto do comentário
    * @param {string} params.usuarioId - UUID do usuário logado
    *
@@ -35,11 +31,27 @@ class MrhsComentariosRepository {
       RETURNING id, created_at;
     `;
 
+    console.log("🟩 [REPOSITORY] INSERT mrhs_comentarios - INÍCIO", {
+      mrhId,
+      usuarioId,
+      comentario,
+      comentarioLength: comentario?.length,
+    });
+
     try {
       const { rows } = await pool.query(query, [mrhId, usuarioId, comentario]);
 
+      console.log("🟩 [REPOSITORY] INSERT OK", rows[0]);
+
       return rows[0];
     } catch (error) {
+      console.log("🟥 [REPOSITORY ERROR] INSERT mrhs_comentarios", {
+        message: error.message,
+        code: error.code,
+        detail: error.detail,
+        constraint: error.constraint,
+      });
+
       throw new Error("Erro ao inserir comentário da MRH.");
     }
   }
@@ -47,7 +59,7 @@ class MrhsComentariosRepository {
   /**
    * Lista todos os comentários de uma MRH
    *
-   * @param {number} mrhId - ID da MRH
+   * @param {number} mrhId - ID da MRH (ad_id)
    *
    * @returns {Promise<Array>} Lista de comentários
    */
@@ -64,10 +76,25 @@ class MrhsComentariosRepository {
       ORDER BY c.created_at ASC;
     `;
 
+    console.log("🟩 [REPOSITORY] SELECT mrhs_comentarios - INÍCIO", {
+      mrhId,
+    });
+
     try {
       const { rows } = await pool.query(query, [mrhId]);
+
+      console.log("🟩 [REPOSITORY] SELECT OK", {
+        total: rows.length,
+      });
+
       return rows;
     } catch (error) {
+      console.log("🟥 [REPOSITORY ERROR] SELECT mrhs_comentarios", {
+        message: error.message,
+        code: error.code,
+        detail: error.detail,
+      });
+
       throw new Error("Erro ao buscar comentários da MRH.");
     }
   }
