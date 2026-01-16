@@ -3,6 +3,66 @@ import * as repo from "./mrhs.repository.js";
 import env from "../../config/env.js";
 
 /**
+ * Cache simples em memória para endereços por CR
+ */
+const enderecoCRCache = new Map();
+
+/**
+ * Busca endereço do CR na API SRH
+ */
+async function buscarEnderecoCR(cr) {
+  if (!cr) return null;
+
+  // Cache
+  if (enderecoCRCache.has(cr)) {
+    return enderecoCRCache.get(cr);
+  }
+
+  try {
+    const response = await axios.get(
+      "https://portalws.gpssa.com.br/SRH_API/api/CentroCusto/BuscarEnderecosCR",
+      {
+        params: {
+          CR: cr,
+          page: 1,
+          start: 0,
+          limit: 1,
+        },
+        headers: {
+          authorization: env.API_TOKEN,
+        },
+        timeout: 15000,
+      }
+    );
+
+    const endereco = response.data?.data?.[0];
+    if (!endereco) {
+      enderecoCRCache.set(cr, null);
+      return null;
+    }
+
+    const enderecoFormatado = [
+      endereco.logradouro,
+      endereco.numero,
+      endereco.bairro,
+      endereco.cidade,
+      endereco.uf,
+      `CEP: ${endereco.cep}`,
+    ]
+      .filter(Boolean)
+      .join(", ");
+
+    enderecoCRCache.set(cr, enderecoFormatado);
+    return enderecoFormatado;
+  } catch (err) {
+    console.error(`[SERVICE] Erro ao buscar endereço do CR ${cr}`);
+    console.error(err.message);
+    enderecoCRCache.set(cr, null);
+    return null;
+  }
+}
+
+/**
  * Sincroniza MRHs com a API externa
  */
 export async function sincronizarMRHs() {
@@ -24,12 +84,13 @@ export async function sincronizarMRHs() {
     };
 
     const response = await axios.post(
-      "https://portalws.gpssa.com.br/SRH_API/api/Admissao/BuscarAbertas?_dc=1763676396616",
+      "https://portalws.gpssa.com.br/SRH_API/api/Admissao/BuscarAbertas",
       body,
       {
         headers: {
           authorization: env.API_TOKEN,
         },
+        timeout: 30000,
       }
     );
 
@@ -46,6 +107,14 @@ export async function sincronizarMRHs() {
     let atualizados = 0;
 
     for (const item of mrhs) {
+      // 🔹 Enriquecimento com endereço do CR
+      if (item.CR && (!item.AD_ENDERECO || item.AD_ENDERECO === "0")) {
+        const enderecoCR = await buscarEnderecoCR(item.CR);
+        if (enderecoCR) {
+          item.AD_ENDERECO = enderecoCR;
+        }
+      }
+
       const existe = await repo.existsByAdId(item.AD_ID);
 
       if (!existe) {

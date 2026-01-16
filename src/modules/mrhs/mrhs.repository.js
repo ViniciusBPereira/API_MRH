@@ -1,6 +1,58 @@
 import pool from "../../config/db.js";
 
 /**
+ * Lista branca de colunas permitidas na tabela MRHS
+ * (protege contra campos inesperados da API)
+ */
+const COLUNAS_PERMITIDAS = new Set([
+  "ad_id",
+  "ad_endereco",
+  "cr",
+  "desccr",
+  "bairrocr",
+  "municipiocr",
+  "estadocr",
+  "cepcr",
+  "centro_custo",
+  "vaga_publicada_gpsvc",
+  "vaga_configurada_gpsvc",
+  "check_processo_rh",
+  "check_processo_dp",
+  "status_rh",
+  "status_dp",
+  "data_registro",
+  "data_inicio_contrato",
+  "data_limite_recrutamento",
+  "encerrado",
+  // 👉 mantenha aqui apenas colunas reais da tabela
+]);
+
+/**
+ * Normaliza payload vindo da API
+ */
+function normalizarDados(data) {
+  const normalizado = {};
+
+  for (const [key, value] of Object.entries(data)) {
+    const coluna = key.toLowerCase();
+
+    if (!COLUNAS_PERMITIDAS.has(coluna)) continue;
+
+    // Não sobrescrever endereço válido
+    if (
+      coluna === "ad_endereco" &&
+      (value === null || value === "" || value === "0")
+    ) {
+      continue;
+    }
+
+    normalizado[coluna] = value;
+  }
+
+  return normalizado;
+}
+
+/**
  * Retorna todos os AD_IDs atualmente NÃO encerrados no banco
  */
 export async function getAdIdsAbertos() {
@@ -28,13 +80,16 @@ export async function existsByAdId(adId) {
  * Insere um novo MRH
  */
 export async function insertMRH(data) {
-  const columns = Object.keys(data);
-  const values = Object.values(data);
+  const dados = normalizarDados(data);
+  const columns = Object.keys(dados);
+  const values = Object.values(dados);
 
-  const placeholders = columns.map((_, i) => `$${i + 1}`).join(",");
+  if (columns.length === 0) return;
+
+  const placeholders = columns.map((_, i) => `$${i + 1}`).join(", ");
 
   const query = `
-    INSERT INTO mrhs (${columns.join(",")})
+    INSERT INTO mrhs (${columns.join(", ")})
     VALUES (${placeholders})
   `;
 
@@ -45,8 +100,9 @@ export async function insertMRH(data) {
  * Atualiza um MRH existente pelo AD_ID
  */
 export async function updateByAdId(adId, data) {
-  const keys = Object.keys(data);
-  const values = Object.values(data);
+  const dados = normalizarDados(data);
+  const keys = Object.keys(dados);
+  const values = Object.values(dados);
 
   if (keys.length === 0) return;
 
