@@ -2,7 +2,6 @@ import pool from "../../config/db.js";
 
 /**
  * Lista branca de colunas permitidas na tabela MRHS
- * (protege contra campos inesperados da API)
  */
 const COLUNAS_PERMITIDAS = new Set([
   "ad_id",
@@ -24,29 +23,42 @@ const COLUNAS_PERMITIDAS = new Set([
   "data_inicio_contrato",
   "data_limite_recrutamento",
   "encerrado",
-  // 👉 mantenha aqui apenas colunas reais da tabela
 ]);
 
 /**
  * Normaliza payload vindo da API
  */
-function normalizarDados(data) {
+function normalizarDados(data, contexto = "DESCONHECIDO") {
   const normalizado = {};
 
   for (const [key, value] of Object.entries(data)) {
     const coluna = key.toLowerCase();
 
-    if (!COLUNAS_PERMITIDAS.has(coluna)) continue;
+    if (!COLUNAS_PERMITIDAS.has(coluna)) {
+      continue;
+    }
 
-    // Não sobrescrever endereço válido
-    if (
-      coluna === "ad_endereco" &&
-      (value === null || value === "" || value === "0")
-    ) {
+    // 🔎 LOG EXPLÍCITO PARA ENDEREÇO
+    if (coluna === "ad_endereco") {
+      console.log(
+        `[REPO][${contexto}] AD_ENDERECO recebido:`,
+        JSON.stringify(value)
+      );
+    }
+
+    // NÃO descartar endereço aqui — isso já foi tratado no service
+    if (coluna === "ad_endereco" && (value === null || value === "")) {
+      console.warn(`[REPO][${contexto}] AD_ENDERECO vazio — ignorado`);
       continue;
     }
 
     normalizado[coluna] = value;
+  }
+
+  if ("ad_endereco" in data && !("ad_endereco" in normalizado)) {
+    console.warn(
+      `[REPO][${contexto}] AD_ENDERECO FOI DESCARTADO NA NORMALIZAÇÃO`
+    );
   }
 
   return normalizado;
@@ -80,11 +92,20 @@ export async function existsByAdId(adId) {
  * Insere um novo MRH
  */
 export async function insertMRH(data) {
-  const dados = normalizarDados(data);
+  console.log(`[REPO][INSERT] AD_ID=${data.AD_ID} iniciando insert`);
+
+  const dados = normalizarDados(data, "INSERT");
   const columns = Object.keys(dados);
   const values = Object.values(dados);
 
-  if (columns.length === 0) return;
+  if (columns.length === 0) {
+    console.warn(
+      `[REPO][INSERT] AD_ID=${data.AD_ID} sem dados após normalização`
+    );
+    return;
+  }
+
+  console.log(`[REPO][INSERT] AD_ID=${data.AD_ID} colunas:`, columns);
 
   const placeholders = columns.map((_, i) => `$${i + 1}`).join(", ");
 
@@ -94,17 +115,26 @@ export async function insertMRH(data) {
   `;
 
   await pool.query(query, values);
+
+  console.log(`[REPO][INSERT] AD_ID=${data.AD_ID} finalizado`);
 }
 
 /**
  * Atualiza um MRH existente pelo AD_ID
  */
 export async function updateByAdId(adId, data) {
-  const dados = normalizarDados(data);
+  console.log(`[REPO][UPDATE] AD_ID=${adId} iniciando update`);
+
+  const dados = normalizarDados(data, "UPDATE");
   const keys = Object.keys(dados);
   const values = Object.values(dados);
 
-  if (keys.length === 0) return;
+  if (keys.length === 0) {
+    console.warn(`[REPO][UPDATE] AD_ID=${adId} sem dados após normalização`);
+    return;
+  }
+
+  console.log(`[REPO][UPDATE] AD_ID=${adId} campos atualizados:`, keys);
 
   const sets = keys.map((key, i) => `${key} = $${i + 1}`).join(", ");
 
@@ -115,6 +145,8 @@ export async function updateByAdId(adId, data) {
   `;
 
   await pool.query(query, [...values, adId]);
+
+  console.log(`[REPO][UPDATE] AD_ID=${adId} finalizado`);
 }
 
 /**
@@ -122,6 +154,8 @@ export async function updateByAdId(adId, data) {
  */
 export async function marcarEncerradas(adIds) {
   if (!adIds || adIds.length === 0) return;
+
+  console.log(`[REPO][ENCERRAR] Encerrando ${adIds.length} MRHs`);
 
   const query = `
     UPDATE mrhs
