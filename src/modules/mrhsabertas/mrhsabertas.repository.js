@@ -42,7 +42,7 @@ class MrhsAbertasRepository {
         m.status_rh,
         m.status_dp,
         m.motivo_admissao,
-        m.ad_salario
+        m.ad_salario,
 
         -- Total de candidatos vinculados à MRH
         COALESCE(c.total_candidatos, 0) AS total_candidatos,
