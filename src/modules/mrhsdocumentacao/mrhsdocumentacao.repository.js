@@ -18,34 +18,44 @@ class MrhsDocumentacaoRepository {
 
     const query = `
       SELECT 
-        data_registro,
-        data_finalizacao_rh,
-        ad_id AS mrh,
-        ad_filial,
-        desccr,
-        nome_user_abertura,
-        nome_responsavel,
-        ctt_xndire,
-        ctt_xngerr,
-        ctt_xngere,
-        ctt_xnsupe,
-        escala,
-        municipiocr,
-        bairrocr,
-        cepcr,
-        descfuncao,
-        horaentrada,
-        horasaida,
-        status_rh,
-        status_dp,
-        motivo_admissao,
-        nome_colaborador,
-        cpf_colaborador,
-        exame,
-        condicao
-      FROM public.mrhs
-      WHERE time = 'DOCUMENTACAO'
-        AND etapa = 0;
+  m.data_registro,
+  m.data_finalizacao_rh,
+  m.ad_id AS mrh,
+  m.ad_filial,
+  m.desccr,
+  m.nome_user_abertura,
+  m.nome_responsavel,
+  m.ctt_xndire,
+  m.ctt_xngerr,
+  m.ctt_xngere,
+  m.ctt_xnsupe,
+  m.escala,
+  m.municipiocr,
+  m.bairrocr,
+  m.cepcr,
+  m.descfuncao,
+  m.horaentrada,
+  m.horasaida,
+  m.status_rh,
+  m.status_dp,
+  m.motivo_admissao,
+
+  /* 🔥 CANDIDATO SELECIONADO OU "-" */
+  COALESCE(c.nome, '-') AS nome_colaborador,
+  COALESCE(c.cpf,  '-') AS cpf_colaborador,
+
+  m.exame,
+  m.condicao
+
+FROM public.mrhs m
+
+LEFT JOIN candidatos c
+  ON c.mrh_id = m.ad_id
+ AND c.status IN ('selecionado', 'aprovado')
+
+WHERE m.time = 'DOCUMENTACAO'
+  AND m.etapa = 0;
+
     `;
 
     try {
