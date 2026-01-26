@@ -40,7 +40,7 @@ class MrhsDocumentacaoRepository {
   m.status_dp,
   m.motivo_admissao,
 
-  /* 🔥 CANDIDATO SELECIONADO OU "-" */
+  /* 🔥 CANDIDATO SELECIONADO */
   COALESCE(c.nome, '-') AS nome_colaborador,
   COALESCE(c.cpf,  '-') AS cpf_colaborador,
 
@@ -51,10 +51,12 @@ FROM public.mrhs m
 
 LEFT JOIN candidatos c
   ON c.mrh_id = m.ad_id
- AND c.status IN ('selecionado', 'aprovado')
-
+ AND c.status = 'Selecionado'
+ AND c.desistente = false
+AND m.encerrado = FALSE
 WHERE m.time = 'DOCUMENTACAO'
   AND m.etapa = 0;
+
 
     `;
 
