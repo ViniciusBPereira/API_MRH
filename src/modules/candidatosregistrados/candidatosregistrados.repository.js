@@ -7,12 +7,14 @@ const candidatosRegistradosRepository = {
     const sql = `
       SELECT
         id,
+        mrh_id,          -- ✅ MRH do candidato
         nome,
         cpf,
         telefone,
         email,
         endereco,
         status,
+        desistente,      -- ✅ flag desistente
         docs
       FROM candidatos
       ORDER BY id DESC
@@ -20,13 +22,23 @@ const candidatosRegistradosRepository = {
 
     const result = await pool.query(sql);
 
-    // 🔥 Garantir que docs sempre será um array válido
-    const rows = result.rows.map((r) => ({
+    return result.rows.map((r) => ({
       ...r,
+      desistente: r.desistente ?? false, // segurança
       docs: safeJson(r.docs),
     }));
+  },
 
-    return rows;
+  async atualizarDesistente(id, desistente) {
+    const sql = `
+      UPDATE candidatos
+      SET desistente = $2
+      WHERE id = $1
+      RETURNING id, desistente
+    `;
+
+    const result = await pool.query(sql, [id, desistente]);
+    return result.rows[0] ?? null;
   },
 
   async excluir(id) {
@@ -40,20 +52,13 @@ const candidatosRegistradosRepository = {
 // 🔧 safeJson: converte texto → JSON SEM ERROS
 // --------------------------------------------------
 function safeJson(value) {
-  // Se veio null, undefined ou vazio → []
   if (!value) return [];
 
   try {
-    // Se já veio array/objeto do banco, retorna diretamente
     if (typeof value === "object") return value;
-
-    // Se veio como string vazia → []
     if (typeof value === "string" && value.trim() === "") return [];
-
-    // Tenta fazer parse da string
     return JSON.parse(value);
   } catch {
-    // Se quebrar, nunca jogamos erro → retornamos []
     return [];
   }
 }

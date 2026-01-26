@@ -2,6 +2,8 @@ import repo from "./mrhsdocumentacao.repository.js";
 import mapaEscala from "../constants/mapaEscala.js";
 import mapaEmpresa from "../constants/mapaEmpresa.js";
 import cache from "../../cache/localcache.js";
+import fs from "fs";
+import { parse } from "csv-parse";
 
 /* =====================================================
    CACHE
@@ -51,10 +53,13 @@ export async function listarMRHsDocumentacao() {
     .map((item) => {
       let dias = null;
 
-      if (item.data_finalizacao_rh) {
-        dias = Math.floor(
-          (hoje - new Date(item.data_finalizacao_rh)) / (1000 * 60 * 60 * 24)
-        );
+      if (item.data_registro) {
+        const dataBase = new Date(item.data_registro);
+        if (!isNaN(dataBase.getTime())) {
+          dias = Math.floor(
+            (Date.now() - dataBase.getTime()) / (1000 * 60 * 60 * 24),
+          );
+        }
       }
 
       return {
@@ -64,13 +69,13 @@ export async function listarMRHsDocumentacao() {
 
         mrh: capitalizeFirstLetterEachWord(item.mrh),
         empresa: capitalizeFirstLetterEachWord(
-          mapaEmpresaCache[item.ad_filial] || "Empresa não mapeada"
+          mapaEmpresaCache[item.ad_filial] || "Empresa não mapeada",
         ),
         escala: capitalizeFirstLetterEachWord(
-          mapaEscalaCache[item.escala] || "Não informado"
+          mapaEscalaCache[item.escala] || "Não informado",
         ),
         endereco: `${capitalizeFirstLetterEachWord(
-          item.municipiocr || ""
+          item.municipiocr || "",
         )}, ${capitalizeFirstLetterEachWord(item.bairrocr || "")} - CEP: ${
           item.cepcr || ""
         }`,
@@ -86,7 +91,7 @@ export async function listarMRHsDocumentacao() {
 
         cr: item.desccr?.split(" - ").slice(1).join(" - ") || "",
         usuario_abertura: capitalizeFirstLetterEachWord(
-          item.nome_user_abertura
+          item.nome_user_abertura,
         ),
         responsavel: capitalizeFirstLetterEachWord(item.nome_responsavel),
         diretor: capitalizeFirstLetterEachWord(item.ctt_xndire),
@@ -94,23 +99,68 @@ export async function listarMRHsDocumentacao() {
         gerente: capitalizeFirstLetterEachWord(item.ctt_xngere),
         supervisor: capitalizeFirstLetterEachWord(item.ctt_xnsupe),
 
-        // ✅ EXAME
+        // ✅ EXAME / CONDIÇÃO
         exame: item.exame ?? "",
+        condicao: item.condicao ?? "PENDENTE",
       };
     })
     .sort(
       (a, b) =>
         new Date(b.data_finalizacao_rh || 0) -
-        new Date(a.data_finalizacao_rh || 0)
+        new Date(a.data_finalizacao_rh || 0),
     );
+}
+
+/* =====================================================
+   🔁 ATUALIZAR CONDIÇÃO (PENDENTE / CONCLUIDO)
+===================================================== */
+export async function atualizarCondicaoPorMrh({ mrh, condicao }) {
+  console.info("[SERVICE] atualizarCondicaoPorMrh", { mrh, condicao });
+
+  if (!mrh || !condicao) {
+    throw new Error("MRH e condição são obrigatórios.");
+  }
+
+  const atualizado = await repo.atualizarCondicaoPorMrh({ mrh, condicao });
+
+  if (!atualizado) {
+    const err = new Error("MRH não localizado no sistema.");
+    err.code = "MRH_NAO_LOCALIZADO";
+    throw err;
+  }
+
+  return atualizado;
+}
+
+/* =====================================================
+   📥 IMPORTAÇÃO EM MASSA — EXAMES
+   payload: [{ mrh, data_exame }]
+===================================================== */
+export async function importarExamesEmMassa(lista) {
+  console.info(
+    "[SERVICE] importarExamesEmMassa",
+    Array.isArray(lista) ? lista.length : 0,
+  );
+
+  if (!Array.isArray(lista) || lista.length === 0) {
+    throw new Error("Lista de importação inválida.");
+  }
+
+  // Validação mínima
+  for (const item of lista) {
+    if (!item.mrh || !item.data_exame) {
+      throw new Error("Cada item deve conter MRH e data_exame.");
+    }
+  }
+
+  await repo.importarExamesEmMassa(lista);
+  return true;
 }
 
 /* =====================================================
    📎 CHECKLIST — ITENS POR CPF
 ===================================================== */
 export async function listarItensDocumentosPorCpf(cpf) {
-  console.info("[SERVICE] listarItensDocumentosPorCpf", cpf);
-
   if (!cpf) throw new Error("CPF não informado.");
 
   const rows = await repo.getItensDocumentosPorCpf(cpf);
@@ -131,8 +181,6 @@ export async function listarItensDocumentosPorCpf(cpf) {
    ➕ CRIAR ITEM CHECKLIST PELO CPF
 ===================================================== */
 export async function criarItemDocumentoPorCpf({ cpf, nome, ordem = null }) {
-  console.info("[SERVICE] criarItemDocumentoPorCpf", { cpf, nome });
-
   if (!cpf || !nome) {
     throw new Error("CPF e nome do documento são obrigatórios.");
   }
@@ -152,8 +200,6 @@ export async function criarItemDocumentoPorCpf({ cpf, nome, ordem = null }) {
    📤 REGISTRAR UPLOAD PELO CPF
 ===================================================== */
 export async function registrarUploadDocumentoPorCpf({ cpf, file }) {
-  console.info("[SERVICE] registrarUploadDocumentoPorCpf", cpf);
-
   if (!cpf || !file) {
     throw new Error("CPF e arquivo são obrigatórios.");
   }
@@ -182,10 +228,7 @@ export async function registrarUploadDocumentoPorCpf({ cpf, file }) {
    📂 LISTAR UPLOADS POR CPF
 ===================================================== */
 export async function listarUploadsPorCpf(cpf) {
-  console.info("[SERVICE] listarUploadsPorCpf", cpf);
-
   if (!cpf) throw new Error("CPF não informado.");
-
   return await repo.listarUploadsPorCpf(cpf);
 }
 
@@ -193,8 +236,6 @@ export async function listarUploadsPorCpf(cpf) {
    ✏️ ATUALIZAR EXAME (AUTO-SAVE)
 ===================================================== */
 export async function atualizarExamePorMrh({ mrh, exame }) {
-  console.info("[SERVICE] atualizarExamePorMrh", { mrh });
-
   if (!mrh) throw new Error("MRH não informado.");
 
   const valor = exame?.trim() || null;
@@ -217,8 +258,6 @@ export async function atualizarExamePorMrh({ mrh, exame }) {
    ✅ CONCLUIR ETAPA (etapa = 1)
 ===================================================== */
 export async function concluirEtapaPorMrh(mrh) {
-  console.info("[SERVICE] concluirEtapaPorMrh", mrh);
-
   if (!mrh) throw new Error("MRH não informado.");
 
   const etapa = await repo.concluirEtapaPorMrh(mrh);
@@ -230,4 +269,43 @@ export async function concluirEtapaPorMrh(mrh) {
   }
 
   return etapa;
+}
+export async function importarExamesEmMassaCsv(filePath) {
+  if (!filePath) {
+    throw new Error("Arquivo CSV não informado.");
+  }
+
+  const lista = [];
+
+  await new Promise((resolve, reject) => {
+    fs.createReadStream(filePath)
+      .pipe(
+        parse({
+          columns: true,
+          delimiter: ";",
+          trim: true,
+          skip_empty_lines: true,
+        }),
+      )
+      .on("data", (row) => {
+        const mrh = row.mrh || row.MRH;
+        const data_exame = row.data_exame || row.DATA_EXAME;
+
+        if (mrh && data_exame) {
+          lista.push({
+            mrh: String(mrh).trim(),
+            data_exame: String(data_exame).trim(),
+          });
+        }
+      })
+      .on("end", resolve)
+      .on("error", reject);
+  });
+
+  if (lista.length === 0) {
+    throw new Error("CSV vazio ou inválido.");
+  }
+
+  // 👉 reaproveita a função que já existe
+  return await importarExamesEmMassa(lista);
 }

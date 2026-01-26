@@ -5,7 +5,6 @@ import cache from "../../cache/localcache.js";
 
 /**
  * Inicialização de cache estático
- * Esses mapas são carregados apenas uma vez na aplicação
  */
 if (!cache.has("mapaEscala")) {
   cache.set("mapaEscala", mapaEscala);
@@ -17,7 +16,6 @@ if (!cache.has("mapaEmpresa")) {
 
 /**
  * Capitaliza a primeira letra de cada palavra.
- * Números e valores inválidos são retornados sem alteração.
  */
 const capitalizeFirstLetterEachWord = (str) => {
   if (!str || typeof str !== "string") return str;
@@ -40,7 +38,7 @@ const formatDateOnly = (value) => {
 };
 
 /**
- * Mapeia o motivo da admissão para descrição legível
+ * Mapeia o motivo da admissão
  */
 const mapMotivoAdmissao = (valor) => {
   if (valor === "1" || valor === 1) return "Aumento de Escopo";
@@ -49,7 +47,7 @@ const mapMotivoAdmissao = (valor) => {
 };
 
 /**
- * Service responsável por listar MRHs abertas
+ * 🔹 LISTAGEM – MRHs abertas (time = SELECAO)
  */
 export async function listarMRHsAbertas() {
   const method = "listarMRHsAbertas";
@@ -71,9 +69,8 @@ export async function listarMRHsAbertas() {
     const dadosCompletos = dados.map((item) => {
       const dataAbertura = formatDateOnly(item.data_registro);
 
-      const dataRegistroObj = new Date(item.data_registro);
       const diasEmAberto = Math.floor(
-        (hoje - dataRegistroObj) / (1000 * 60 * 60 * 24),
+        (hoje - new Date(item.data_registro)) / (1000 * 60 * 60 * 24),
       );
 
       const escalaDescricao = capitalizeFirstLetterEachWord(
@@ -84,15 +81,12 @@ export async function listarMRHsAbertas() {
         mapaEmpresaCache[item.ad_filial] || "Empresa não mapeada",
       );
 
-      const municipio = capitalizeFirstLetterEachWord(
+      const endereco = `${capitalizeFirstLetterEachWord(
         (item.municipiocr || "").trim(),
-      );
-      const bairro = capitalizeFirstLetterEachWord(
+      )}, ${capitalizeFirstLetterEachWord(
         (item.bairrocr || "").trim(),
-      );
-      const cep = item.cepcr || "";
+      )} - CEP: ${item.cepcr || ""}`;
 
-      const endereco = `${municipio}, ${bairro} - CEP: ${cep}`;
       const periodo = `${item.horaentrada || ""} - ${item.horasaida || ""}`;
       const crTratado = item.desccr?.split(" - ").slice(1).join(" - ") || "";
 
@@ -121,37 +115,57 @@ export async function listarMRHsAbertas() {
         gerente: capitalizeFirstLetterEachWord(item.ctt_xngere),
         supervisor: capitalizeFirstLetterEachWord(item.ctt_xnsupe),
 
-        // 🔥 SALÁRIO TRATADO
         salario: Number(item.ad_salario) || 0,
-
         total_candidatos: item.total_candidatos,
         total_comentarios: item.total_comentarios,
       };
     });
 
-    const dadosOrdenados = dadosCompletos.sort((a, b) => {
-      const va = a.data_abertura ? new Date(a.data_abertura).getTime() : 0;
-      const vb = b.data_abertura ? new Date(b.data_abertura).getTime() : 0;
-      return vb - va;
-    });
+    const dadosOrdenados = dadosCompletos.sort(
+      (a, b) => new Date(b.data_abertura || 0) - new Date(a.data_abertura || 0),
+    );
 
-    const duration = Date.now() - startTime;
-
-    console.info(`[SERVICE] ${method} - Execução finalizada com sucesso`, {
+    console.info(`[SERVICE] ${method} - Execução finalizada`, {
       total_retornado: dadosOrdenados.length,
-      tempo_execucao_ms: duration,
+      tempo_execucao_ms: Date.now() - startTime,
     });
 
     return dadosOrdenados;
   } catch (error) {
-    const duration = Date.now() - startTime;
-
-    console.error(`[SERVICE] ${method} - Erro na execução`, {
+    console.error(`[SERVICE] ${method} - Erro`, {
       mensagem: error.message,
       stack: error.stack,
-      tempo_execucao_ms: duration,
+      tempo_execucao_ms: Date.now() - startTime,
     });
 
     throw new Error("Erro ao listar MRHs abertas.");
   }
+}
+
+/**
+ * 🔹 AÇÃO – mover MRH do time SELECAO para DOCUMENTACAO
+ */
+export async function moverMRHParaDocumentacao(mrhId) {
+  const method = "moverMRHParaDocumentacao";
+  const startTime = Date.now();
+
+  console.info(`[SERVICE] ${method} - Início`, { mrhId });
+
+  if (!mrhId) {
+    throw new Error("ID da MRH não informado.");
+  }
+
+  const resultado = await repo.moverParaDocumentacao(mrhId);
+
+  if (!resultado) {
+    throw new Error("MRH não encontrada ou já movida para Documentação.");
+  }
+
+  console.info(`[SERVICE] ${method} - MRH atualizada`, {
+    mrhId,
+    novo_time: resultado.time,
+    tempo_execucao_ms: Date.now() - startTime,
+  });
+
+  return resultado;
 }

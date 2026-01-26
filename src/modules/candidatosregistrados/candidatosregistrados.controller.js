@@ -15,6 +15,35 @@ const candidatosRegistradosController = {
     }
   },
 
+  async atualizarDesistente(req, res) {
+    try {
+      const { id } = req.params;
+      const { desistente } = req.body;
+
+      if (!id) {
+        return res.status(400).json({ erro: "ID é obrigatório." });
+      }
+
+      const atualizado = await service.atualizarDesistente(
+        Number(id),
+        desistente,
+      );
+
+      return res.json({
+        mensagem: "Status de desistência atualizado com sucesso.",
+        candidato: atualizado,
+      });
+    } catch (err) {
+      console.error("Erro ao atualizar desistente:", err);
+
+      if (err.message.includes("não encontrado")) {
+        return res.status(404).json({ erro: err.message });
+      }
+
+      return res.status(400).json({ erro: err.message });
+    }
+  },
+
   async excluir(req, res) {
     try {
       const { id } = req.params;
@@ -32,7 +61,6 @@ const candidatosRegistradosController = {
     } catch (err) {
       console.error("Erro ao excluir candidato:", err);
 
-      // 🔥 Se o service lançar "Candidato não encontrado."
       if (err.message.includes("não encontrado")) {
         return res.status(404).json({ erro: err.message });
       }

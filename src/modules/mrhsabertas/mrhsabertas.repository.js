@@ -4,17 +4,18 @@ import pool from "../../config/db.js";
  * Repository responsável por consultas de MRHs abertas.
  *
  * Responsabilidades:
- * - Buscar MRHs não encerradas
+ * - Buscar MRHs abertas do time de SELEÇÃO
  * - Retornar total de candidatos por MRH
  * - Retornar total de comentários por MRH
+ * - Atualizar time da MRH
  *
  * Observações:
  * - Usa subqueries agregadas para evitar contagem duplicada
- * - Preparado para produção (sem logs diretos no repository)
+ * - Preparado para produção
  */
 class MrhsAbertasRepository {
   /**
-   * Retorna todas as MRHs abertas com contagem de candidatos e comentários.
+   * Retorna todas as MRHs abertas do time de SELEÇÃO.
    *
    * @returns {Promise<Array>} Lista de MRHs abertas
    * @throws {Error} Erro tratado para a camada superior
@@ -43,6 +44,7 @@ class MrhsAbertasRepository {
         m.status_dp,
         m.motivo_admissao,
         m.ad_salario,
+        m.time,
 
         -- Total de candidatos vinculados à MRH
         COALESCE(c.total_candidatos, 0) AS total_candidatos,
@@ -71,15 +73,38 @@ class MrhsAbertasRepository {
       ) mc ON mc.mrh_id = m.ad_id
 
       WHERE m.status_rh NOT LIKE '%ENCERRADO%'
-        AND m.encerrado = FALSE;
+        AND m.encerrado = FALSE
+        AND m.time = 'SELECAO';
     `;
 
     try {
       const result = await pool.query(query);
       return result.rows;
     } catch (error) {
-      // O erro é encapsulado para não vazar detalhes de infraestrutura
-      throw new Error("Erro ao buscar MRHs abertas.");
+      throw new Error("Erro ao buscar MRHs abertas do time de Seleção.");
+    }
+  }
+
+  /**
+   * Atualiza o time da MRH para DOCUMENTACAO.
+   *
+   * @param {number|string} mrhId - ID da MRH
+   * @returns {Promise<Object>} MRH atualizada
+   */
+  async moverParaDocumentacao(mrhId) {
+    const query = `
+      UPDATE public.mrhs
+         SET time = 'DOCUMENTACAO'
+       WHERE ad_id = $1
+         AND time = 'SELECAO'
+       RETURNING ad_id, time;
+    `;
+
+    try {
+      const { rows } = await pool.query(query, [mrhId]);
+      return rows[0];
+    } catch (error) {
+      throw new Error("Erro ao mover MRH para Documentação.");
     }
   }
 }

@@ -10,7 +10,12 @@ import {
   uploadDocumentoPorCpf,
   listarUploadsDocumentoPorCpf,
   atualizarExame,
-  concluirEtapa, // ✅ NOVO
+  concluirEtapa,
+
+  // 🔥 NOVOS
+  atualizarCondicao,
+  importarExames,
+  importarExamesCsv, // ✅ CSV
 } from "./mrhsdocumentacao.controller.js";
 
 const router = Router();
@@ -74,6 +79,24 @@ router.post("/upload/:cpf", upload.single("arquivo"), uploadDocumentoPorCpf);
    ✏️ EXAME — AUTO SAVE
 ===================================================== */
 router.patch("/exame/:mrh", atualizarExame);
+
+/* =====================================================
+   🔁 CONDIÇÃO (PENDENTE | CONCLUIDO)
+===================================================== */
+router.patch("/condicao/:mrh", atualizarCondicao);
+
+/* =====================================================
+   📥 IMPORTAÇÃO EM MASSA (JSON)
+   body: [{ mrh, data_exame }]
+===================================================== */
+router.post("/importacao", importarExames);
+
+/* =====================================================
+   📥 IMPORTAÇÃO EM MASSA (CSV)
+   multipart/form-data
+   field: arquivo
+===================================================== */
+router.post("/importacao/csv", upload.single("arquivo"), importarExamesCsv);
 
 /* =====================================================
    ✅ CONCLUIR DOCUMENTAÇÃO (etapa = 1)

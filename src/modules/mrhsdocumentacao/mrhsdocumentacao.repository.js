@@ -10,6 +10,7 @@ class MrhsDocumentacaoRepository {
   /* =====================================================
      📄 LISTAR MRHs — TIME DE DOCUMENTAÇÃO
      ✔ inclui EXAME
+     ✔ inclui CONDICAO
      ✔ filtra apenas etapa = 0
   ===================================================== */
   async getAll() {
@@ -40,10 +41,10 @@ class MrhsDocumentacaoRepository {
         motivo_admissao,
         nome_colaborador,
         cpf_colaborador,
-        exame
+        exame,
+        condicao
       FROM public.mrhs
-      WHERE status_rh LIKE '%ENCERRADO%'
-        AND encerrado = FALSE
+      WHERE time = 'DOCUMENTACAO'
         AND etapa = 0;
     `;
 
@@ -60,8 +61,6 @@ class MrhsDocumentacaoRepository {
      ✏️ ATUALIZAR EXAME PELO MRH
   ===================================================== */
   async atualizarExamePorMrh({ mrh, exame }) {
-    const method = "MrhsDocumentacaoRepository.atualizarExamePorMrh";
-
     const query = `
       UPDATE public.mrhs
       SET exame = $2
@@ -69,23 +68,80 @@ class MrhsDocumentacaoRepository {
       RETURNING exame;
     `;
 
+    const { rows } = await pool.query(query, [mrh, exame]);
+    if (rows.length === 0) return null;
+    return rows[0].exame;
+  }
+
+  /* =====================================================
+     🔁 ATUALIZAR CONDIÇÃO (PENDENTE / CONCLUIDO)
+  ===================================================== */
+  async atualizarCondicaoPorMrh({ mrh, condicao }) {
+    const query = `
+      UPDATE public.mrhs
+      SET condicao = $2
+      WHERE ad_id = $1
+      RETURNING condicao;
+    `;
+
+    const { rows } = await pool.query(query, [mrh, condicao]);
+    if (rows.length === 0) return null;
+    return rows[0].condicao;
+  }
+
+  /* =====================================================
+     📥 IMPORTAÇÃO EM MASSA (CSV)
+     ✔ recebe MRH + data_exame
+     ✔ seta condicao = CONCLUIDO
+     ✔ usa transação
+  ===================================================== */
+  async importarExamesEmMassa(lista) {
+    const client = await pool.connect();
+
+    const resultado = {
+      atualizados: [],
+      nao_encontrados: [],
+    };
+
+    const query = `
+      UPDATE public.mrhs
+      SET 
+        exame = $2,
+        condicao = 'CONCLUIDO'
+      WHERE ad_id = $1
+      RETURNING ad_id;
+    `;
+
     try {
-      const { rows } = await pool.query(query, [mrh, exame]);
-      if (rows.length === 0) return null;
-      return rows[0].exame;
+      await client.query("BEGIN");
+
+      for (const item of lista) {
+        const { mrh, data_exame } = item;
+
+        const { rows } = await client.query(query, [mrh, data_exame]);
+
+        if (rows.length === 0) {
+          resultado.nao_encontrados.push(mrh);
+        } else {
+          resultado.atualizados.push(mrh);
+        }
+      }
+
+      await client.query("COMMIT");
+      return resultado;
     } catch (error) {
-      console.error(`[REPOSITORY] ${method} - Erro`, error);
-      throw new Error("Erro ao atualizar exame.");
+      await client.query("ROLLBACK");
+      console.error("[REPOSITORY] importarExamesEmMassa - Erro", error);
+      throw new Error("Erro na importação em massa de exames.");
+    } finally {
+      client.release();
     }
   }
 
   /* =====================================================
      ✅ CONCLUIR ETAPA (etapa = 1)
-     ✔ usado pelo botão ✔
   ===================================================== */
   async concluirEtapaPorMrh(mrh) {
-    const method = "MrhsDocumentacaoRepository.concluirEtapaPorMrh";
-
     const query = `
       UPDATE public.mrhs
       SET etapa = 1
@@ -93,14 +149,9 @@ class MrhsDocumentacaoRepository {
       RETURNING etapa;
     `;
 
-    try {
-      const { rows } = await pool.query(query, [mrh]);
-      if (rows.length === 0) return null;
-      return rows[0].etapa;
-    } catch (error) {
-      console.error(`[REPOSITORY] ${method} - Erro`, error);
-      throw new Error("Erro ao concluir etapa.");
-    }
+    const { rows } = await pool.query(query, [mrh]);
+    if (rows.length === 0) return null;
+    return rows[0].etapa;
   }
 
   /* =====================================================
