@@ -14,7 +14,17 @@ export async function sincronizarRondasCorp() {
      * - last_tarefa_numero: até onde os dados foram buscados
      */
     const syncControl = await repo.getSyncControl();
-    const lastTarefaNumero = Number(syncControl.last_tarefa_numero) || 0;
+
+const lastTarefaNumero = syncControl
+  ? Number(syncControl.last_tarefa_numero) || 0
+  : 0;
+
+if (!syncControl) {
+  console.warn(
+    "[SERVICE][RONDAS] Nenhum controle encontrado. Iniciando sincronização do zero."
+  );
+}
+
 
     console.log(
       "[SERVICE][RONDAS] Última tarefa sincronizada:",
