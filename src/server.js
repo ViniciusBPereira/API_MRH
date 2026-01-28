@@ -7,16 +7,23 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+const server = express();
+
+/* ✅ AQUI ESTÁ O AJUSTE */
+server.use(app); // <-- monta TODAS as rotas /api antes do frontend
+
 // 🔹 Servir frontend somente fora de /api/**
-app.use(express.static(path.join(__dirname, "..", "..", "Frontend", "build")));
+server.use(
+  express.static(path.join(__dirname, "..", "..", "Frontend", "build")),
+);
 
 // 🔹 Qualquer rota que NÃO comece com /api cai aqui
-app.get(/^\/(?!api).*/, (req, res) => {
+server.get(/^\/(?!api).*/, (req, res) => {
   res.sendFile(
-    path.join(__dirname, "..", "..", "Frontend", "build", "index.html")
+    path.join(__dirname, "..", "..", "Frontend", "build", "index.html"),
   );
 });
 
-app.listen(env.PORT, () => {
+server.listen(env.PORT, () => {
   console.log(`🚀 Servidor rodando na porta ${env.PORT}`);
 });
