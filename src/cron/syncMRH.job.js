@@ -1,7 +1,7 @@
 import cron from "node-cron";
 import { sincronizarMRHs } from "../modules/mrhs/mrhs.service.js";
 
-cron.schedule("*/5 * * * *", async () => {
+cron.schedule("*/10 * * * *", async () => {
   console.log("[CRON] Executando sincronização MRH...");
 
   try {

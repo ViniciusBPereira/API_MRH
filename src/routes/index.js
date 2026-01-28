@@ -10,7 +10,7 @@ import candidatosRoutes from "../modules/candidatos/candidatos.routes.js";
 import fichaRoutes from "../modules/fichas/ficha.routes.js";
 import candidatosRegistradosRoutes from "../modules/candidatosregistrados/candidatosregistrados.routes.js";
 import checkDocsRoutes from "../modules/checkdocs/checkdocs.routes.js";
-
+import rondasRoutes from "../modules/rondasCorp/rondasCorpExport.routes.js";
 /* ================= MIDDLEWARE ================= */
 import { authMiddleware } from "../modules/middlewares/auth.middleware.js";
 
@@ -20,6 +20,13 @@ const router = express.Router();
    🔓 ROTAS PÚBLICAS
 ======================================================= */
 router.use("/auth", authRoutes);
+
+/* ================= RONDAS CORP =================
+   /api/rondas
+     → listagem JSON
+     → exportação CSV
+=============================================== */
+router.use("/rondas", rondasRoutes);
 
 /* =======================================================
    🔒 A PARTIR DAQUI TODAS AS ROTAS SÃO PROTEGIDAS

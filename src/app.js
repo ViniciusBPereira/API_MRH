@@ -3,6 +3,7 @@ import cors from "cors";
 import path from "path";
 import routes from "./routes/index.js";
 import "./cron/syncMRH.job.js"; // inicia cron
+import "./cron/syncRondasCorpJob.js";
 
 const app = express();
 
@@ -11,9 +12,9 @@ const app = express();
 ------------------------------------------------------ */
 app.use(
   cors({
-    origin: "*", // ajuste se necessário
-    exposedHeaders: ["Authorization"],
-  })
+    origin: "*",
+    exposedHeaders: ["Authorization", "Content-Disposition"],
+  }),
 );
 
 /* ------------------------------------------------------
