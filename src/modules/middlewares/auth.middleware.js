@@ -4,13 +4,28 @@ import env from "../../config/env.js";
 /**
  * Middleware de autenticação JWT
  *
- * Logs estratégicos para diagnóstico:
- * - Entrada do middleware
- * - Presença do header Authorization
- * - Resultado da verificação do token
- * - Conteúdo final de req.user
+ * - 🔓 Ignora rotas públicas: /api/rondas/*
+ * - 🔒 Protege todas as demais rotas
+ * - Logs completos para diagnóstico
  */
 export function authMiddleware(req, res, next) {
+  const path = req.path; // ⚠️ path RELATIVO ao mount (/api)
+
+  /* =====================================================
+     🔓 ROTAS PÚBLICAS (IGNORAR AUTH)
+     /api/rondas/*
+  ===================================================== */
+  if (path.startsWith("/rondas")) {
+    console.log("🔓 AUTH | Rota pública ignorada:", {
+      method: req.method,
+      path: req.originalUrl,
+    });
+    return next();
+  }
+
+  /* =====================================================
+     🔐 ROTAS PROTEGIDAS
+  ===================================================== */
   console.log("🔐 AUTH | HIT", {
     method: req.method,
     path: req.originalUrl,
@@ -42,12 +57,6 @@ export function authMiddleware(req, res, next) {
       perfil: decoded.perfil ?? null,
     };
 
-    console.log("✅ AUTH | Token válido", {
-      userId: req.user.id,
-      email: req.user.email,
-      perfil: req.user.perfil,
-    });
-
     if (!req.user.id) {
       console.log("❌ AUTH | Token válido, mas sem ID", decoded);
       return res
@@ -55,7 +64,13 @@ export function authMiddleware(req, res, next) {
         .json({ message: "Token válido, mas usuário inválido" });
     }
 
-    next();
+    console.log("✅ AUTH | Token válido", {
+      userId: req.user.id,
+      email: req.user.email,
+      perfil: req.user.perfil,
+    });
+
+    return next();
   } catch (error) {
     console.log("❌ AUTH | Falha ao validar token", error.message);
     return res.status(401).json({
