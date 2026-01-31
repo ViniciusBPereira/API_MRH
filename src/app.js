@@ -8,14 +8,33 @@ import "./cron/syncRondasCorpJob.js";
 const app = express();
 
 /* ------------------------------------------------------
-   🌍 CORS
+   🌍 CORS — AJUSTADO PARA PRODUÇÃO
 ------------------------------------------------------ */
-app.use(
-  cors({
-    origin: "*",
-    exposedHeaders: ["Authorization", "Content-Disposition"],
-  }),
-);
+const allowedOrigins = [
+  "https://projetosqualidade.site",
+  "http://localhost:5173", // Vite (dev)
+  "http://localhost:3000",
+];
+
+const corsOptions = {
+  origin: (origin, callback) => {
+    // permite chamadas sem origin (Postman, cron, jobs internos)
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    return callback(new Error(`CORS bloqueado para a origem: ${origin}`));
+  },
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  exposedHeaders: ["Authorization", "Content-Disposition"],
+  credentials: false, // Bearer Token (não cookies)
+};
+
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions)); // 🔥 preflight obrigatório
 
 /* ------------------------------------------------------
    📦 JSON PARSER
@@ -36,20 +55,16 @@ app.use((err, req, res, next) => {
 });
 
 /* ------------------------------------------------------
-   📁 SERVIR ARQUIVOS DE UPLOADS (ESSENCIAL!)
+   📁 SERVIR ARQUIVOS DE UPLOADS
 ------------------------------------------------------ */
-const uploadsPath = path.resolve("uploads"); // raiz de uploads
+const uploadsPath = path.resolve("uploads");
 
 app.use("/uploads", express.static(uploadsPath));
 
 /*
- Agora qualquer arquivo salvo em:
-
-   uploads/candidatos/arquivo.pdf
-
- fica acessível em:
-
-   http://localhost:10555/uploads/candidatos/arquivo.pdf
+ Exemplo:
+ uploads/candidatos/arquivo.pdf
+ → https://api.seudominio.com/uploads/candidatos/arquivo.pdf
 */
 
 /* ------------------------------------------------------
@@ -58,7 +73,7 @@ app.use("/uploads", express.static(uploadsPath));
 app.use("/api", routes);
 
 /* ------------------------------------------------------
-   ⚠️ Fallback opcional (caso use React build futuramente)
+   ⚠️ FALLBACK 404
 ------------------------------------------------------ */
 app.use((req, res) => {
   return res.status(404).json({
