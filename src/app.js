@@ -8,21 +8,14 @@ import "./cron/syncRondasCorpJob.js";
 const app = express();
 
 /* ------------------------------------------------------
-   🌍 CORS — BASE SEGURA (ANTES DO NGINX)
-   👉 Funciona local, produção e Postman
+   🌍 CORS
 ------------------------------------------------------ */
 app.use(
   cors({
-    origin: true, // 🔥 reflete a Origin automaticamente
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
+    origin: "*",
     exposedHeaders: ["Authorization", "Content-Disposition"],
-    credentials: false, // Bearer Token (não cookies)
   }),
 );
-
-/* Preflight */
-app.options("*", cors());
 
 /* ------------------------------------------------------
    📦 JSON PARSER
@@ -43,15 +36,20 @@ app.use((err, req, res, next) => {
 });
 
 /* ------------------------------------------------------
-   📁 SERVIR ARQUIVOS DE UPLOADS
+   📁 SERVIR ARQUIVOS DE UPLOADS (ESSENCIAL!)
 ------------------------------------------------------ */
-const uploadsPath = path.resolve("uploads");
+const uploadsPath = path.resolve("uploads"); // raiz de uploads
 
 app.use("/uploads", express.static(uploadsPath));
 
 /*
- uploads/candidatos/arquivo.pdf
- → http://localhost:10555/uploads/candidatos/arquivo.pdf
+ Agora qualquer arquivo salvo em:
+
+   uploads/candidatos/arquivo.pdf
+
+ fica acessível em:
+
+   http://localhost:10555/uploads/candidatos/arquivo.pdf
 */
 
 /* ------------------------------------------------------
@@ -60,7 +58,7 @@ app.use("/uploads", express.static(uploadsPath));
 app.use("/api", routes);
 
 /* ------------------------------------------------------
-   ⚠️ FALLBACK 404
+   ⚠️ Fallback opcional (caso use React build futuramente)
 ------------------------------------------------------ */
 app.use((req, res) => {
   return res.status(404).json({
