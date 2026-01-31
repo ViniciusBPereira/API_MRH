@@ -8,33 +8,21 @@ import "./cron/syncRondasCorpJob.js";
 const app = express();
 
 /* ------------------------------------------------------
-   🌍 CORS — AJUSTADO PARA PRODUÇÃO
+   🌍 CORS — BASE SEGURA (ANTES DO NGINX)
+   👉 Funciona local, produção e Postman
 ------------------------------------------------------ */
-const allowedOrigins = [
-  "https://projetosqualidade.site",
-  "http://localhost:5173", // Vite (dev)
-  "http://localhost:3000",
-];
+app.use(
+  cors({
+    origin: true, // 🔥 reflete a Origin automaticamente
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    exposedHeaders: ["Authorization", "Content-Disposition"],
+    credentials: false, // Bearer Token (não cookies)
+  }),
+);
 
-const corsOptions = {
-  origin: (origin, callback) => {
-    // permite chamadas sem origin (Postman, cron, jobs internos)
-    if (!origin) return callback(null, true);
-
-    if (allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    }
-
-    return callback(new Error(`CORS bloqueado para a origem: ${origin}`));
-  },
-  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
-  exposedHeaders: ["Authorization", "Content-Disposition"],
-  credentials: false, // Bearer Token (não cookies)
-};
-
-app.use(cors(corsOptions));
-app.options("*", cors(corsOptions)); // 🔥 preflight obrigatório
+/* Preflight */
+app.options("*", cors());
 
 /* ------------------------------------------------------
    📦 JSON PARSER
@@ -62,9 +50,8 @@ const uploadsPath = path.resolve("uploads");
 app.use("/uploads", express.static(uploadsPath));
 
 /*
- Exemplo:
  uploads/candidatos/arquivo.pdf
- → https://api.seudominio.com/uploads/candidatos/arquivo.pdf
+ → http://localhost:10555/uploads/candidatos/arquivo.pdf
 */
 
 /* ------------------------------------------------------
