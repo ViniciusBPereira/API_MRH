@@ -80,7 +80,7 @@ export async function exportarCsv(req, res) {
     res.setHeader("Content-Type", "text/csv; charset=utf-8");
     res.setHeader(
       "Content-Disposition",
-      "attachment; filename=rondas_hospital.csv",
+      "attachment; filename=XRLssj_DLGA.csv",
     );
 
     return res.status(200).send(csv);
