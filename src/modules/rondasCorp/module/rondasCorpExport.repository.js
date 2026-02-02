@@ -1,10 +1,12 @@
 import pool from "../../../config/db.js";
 
 /**
- * Busca rondas para listagem
- * 🔒 FILTRADO PELO CR DO PERFIL
- * 📅 FILTRO OPCIONAL POR DATA (hora_chegada)
- * 🧭 FILTRO OPCIONAL POR ROTEIRO (contém)
+ * =====================================================
+ * LISTAGEM PARA FRONTEND
+ * =====================================================
+ * 🔒 Filtrado por CR
+ * 📅 Filtro opcional por DATA (ignora hora)
+ * 🧭 Filtro opcional por ROTEIRO (contém)
  */
 export async function listarRondas({
   cr,
@@ -18,13 +20,13 @@ export async function listarRondas({
   let whereClause = "WHERE cr = $1";
 
   if (dataInicio) {
-    params.push(`${dataInicio} 00:00:00`);
-    whereClause += ` AND hora_chegada >= $${params.length}`;
+    params.push(dataInicio);
+    whereClause += ` AND hora_chegada::date >= $${params.length}::date`;
   }
 
   if (dataFim) {
-    params.push(`${dataFim} 23:59:59`);
-    whereClause += ` AND hora_chegada <= $${params.length}`;
+    params.push(dataFim);
+    whereClause += ` AND hora_chegada::date <= $${params.length}::date`;
   }
 
   if (roteiro) {
@@ -60,23 +62,30 @@ export async function listarRondas({
 }
 
 /**
- * Busca TODAS as rondas para exportação CSV
- * 🔒 FILTRADO PELO CR DO PERFIL
- * 📅 FILTRO OPCIONAL POR DATA (hora_chegada)
- * 🧭 FILTRO OPCIONAL POR ROTEIRO (contém)
+ * =====================================================
+ * EXPORTAÇÃO CSV (SEM PAGINAÇÃO)
+ * =====================================================
+ * 🔒 Filtrado por CR
+ * 📅 Filtro opcional por DATA
+ * 🧭 Filtro opcional por ROTEIRO
  */
-export async function listarRondasParaCsv(cr, dataInicio, dataFim, roteiro) {
+export async function listarRondasParaCsv(
+  cr,
+  dataInicio,
+  dataFim,
+  roteiro,
+) {
   const params = [cr];
   let whereClause = "WHERE cr = $1";
 
   if (dataInicio) {
-    params.push(`${dataInicio} 00:00:00`);
-    whereClause += ` AND hora_chegada >= $${params.length}`;
+    params.push(dataInicio);
+    whereClause += ` AND hora_chegada::date >= $${params.length}::date`;
   }
 
   if (dataFim) {
-    params.push(`${dataFim} 23:59:59`);
-    whereClause += ` AND hora_chegada <= $${params.length}`;
+    params.push(dataFim);
+    whereClause += ` AND hora_chegada::date <= $${params.length}::date`;
   }
 
   if (roteiro) {
@@ -107,8 +116,9 @@ export async function listarRondasParaCsv(cr, dataInicio, dataFim, roteiro) {
 }
 
 /**
- * Retorna informações da última sincronização das rondas
- * (controle global, NÃO filtra por CR)
+ * =====================================================
+ * STATUS DE SINCRONIZAÇÃO
+ * =====================================================
  */
 export async function getUltimaSincronizacao() {
   const result = await pool.query(`
