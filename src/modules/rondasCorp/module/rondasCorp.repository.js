@@ -31,7 +31,7 @@ export async function buscarRondasCorp(lastTarefaNumero) {
     FROM dbo.tarefa
     INNER JOIN dbo.recurso
       ON recurso.codigohash = tarefa.finalizadoporhash
-    WHERE LEFT(tarefa.estruturanivel2, 5) IN ('91826', '91962')
+    WHERE LEFT(tarefa.estruturanivel2, 5) IN ('91826', '91962','91858')
      -- AND tarefa.numero > $1
     ORDER BY tarefa.numero
   `;
