@@ -51,7 +51,9 @@ export async function listarRondas({
       remark
     FROM corp_rondas
     ${whereClause}
-    ORDER BY hora_chegada DESC
+    ORDER BY
+      hora_chegada DESC,
+      tarefa_numero DESC
     LIMIT $${params.length - 1}
     OFFSET $${params.length}
     `,
@@ -107,7 +109,9 @@ export async function listarRondasParaCsv(
       remark                    AS "remark"
     FROM corp_rondas
     ${whereClause}
-    ORDER BY hora_chegada
+    ORDER BY
+      hora_chegada DESC,
+      tarefa_numero DESC
     `,
     params,
   );
