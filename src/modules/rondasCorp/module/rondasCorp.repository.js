@@ -1,5 +1,5 @@
-import pool from "../../config/db.js"; // banco LOCAL
-import corpPool from "../../config/corpDb.js"; // banco CORPORATIVO (VPN)
+import pool from "../../../config/db.js"; // banco LOCAL
+import corpPool from "../../../config/corpDb.js"; // banco CORPORATIVO (VPN)
 
 /**
  * ============================
@@ -8,13 +8,15 @@ import corpPool from "../../config/corpDb.js"; // banco CORPORATIVO (VPN)
  */
 
 /**
- * Busca TODAS as rondas de forma incremental
- * Critério: tarefa.numero > last_tarefa_numero
+ * Busca rondas de forma incremental
+ * - Busca múltiplos CRs
+ * - Extrai o CR para persistência local
  */
 export async function buscarRondasCorp(lastTarefaNumero) {
   const query = `
     SELECT
       tarefa.numero AS tarefa_numero,
+      LEFT(tarefa.estruturanivel2, 5) AS cr,
       split_part(tarefa.estruturahierarquiadescricao, '/', 5)
         AS nome_departamento,
       tarefa.nome AS nome_roteiro,
@@ -29,7 +31,7 @@ export async function buscarRondasCorp(lastTarefaNumero) {
     FROM dbo.tarefa
     INNER JOIN dbo.recurso
       ON recurso.codigohash = tarefa.finalizadoporhash
-    WHERE LEFT(tarefa.estruturanivel2, 5) = '91826'
+    WHERE LEFT(tarefa.estruturanivel2, 5) IN ('91826', '91962')
       AND tarefa.numero > $1
     ORDER BY tarefa.numero
   `;
@@ -78,6 +80,9 @@ export async function updateSyncControl({ lastSyncAt, lastTarefaNumero }) {
  * ============================
  */
 
+/**
+ * Verifica se a ronda já existe
+ */
 export async function existsByTarefaNumero(tarefaNumero) {
   const result = await pool.query(
     `
@@ -92,6 +97,10 @@ export async function existsByTarefaNumero(tarefaNumero) {
   return result.rowCount > 0;
 }
 
+/**
+ * Insere nova ronda
+ * - data já contém o CR
+ */
 export async function insertRonda(data) {
   const columns = Object.keys(data);
   const values = Object.values(data);
@@ -106,6 +115,9 @@ export async function insertRonda(data) {
   await pool.query(query, values);
 }
 
+/**
+ * Atualiza ronda existente
+ */
 export async function updateByTarefaNumero(tarefaNumero, data) {
   const keys = Object.keys(data);
   const values = Object.values(data);

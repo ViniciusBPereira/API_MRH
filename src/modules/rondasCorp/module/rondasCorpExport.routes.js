@@ -10,20 +10,33 @@ const router = Router();
 
 /* =====================================================
    📄 RONDAS CORP — LISTAGEM
-   GET /rondas
+   GET /api/rondas
+
+   Query params opcionais:
+   - limit
+   - offset
+   - dataInicio (YYYY-MM-DD ou ISO)
+   - dataFim (YYYY-MM-DD ou ISO)
+   - roteiro (string | contém / LIKE)
 ===================================================== */
 router.get("/", listar);
 
 /* =====================================================
-   📥 RONDAS CORP — EXPORTAÇÃO CSV
-   GET /rondas/export/csv
-===================================================== */
-router.get("/export/csv", exportarCsv);
-
-/* =====================================================
    ⏱️ RONDAS CORP — ÚLTIMA SINCRONIZAÇÃO
-   GET /rondas/ultima-sincronizacao
+   GET /api/rondas/ultima-sincronizacao
+   (não depende de CR, data ou roteiro)
 ===================================================== */
 router.get("/ultima-sincronizacao", ultimaSincronizacao);
+
+/* =====================================================
+   📥 RONDAS CORP — EXPORTAÇÃO CSV
+   GET /api/rondas/export/csv
+
+   Query params opcionais:
+   - dataInicio
+   - dataFim
+   - roteiro (string | contém / LIKE)
+===================================================== */
+router.get("/export/csv", exportarCsv);
 
 export default router;

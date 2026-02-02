@@ -2,11 +2,27 @@ import * as repo from "./rondasCorpExport.repository.js";
 
 /**
  * Lista rondas para o frontend (JSON)
+ * 🔒 FILTRADO PELO CR DO PERFIL
+ * 📅 FILTRO OPCIONAL POR DATA
+ * 🧭 FILTRO OPCIONAL POR ROTEIRO
  */
-export async function listarRondas(params) {
-  const { limit = 50, offset = 0 } = params;
+export async function listarRondas({
+  cr,
+  dataInicio,
+  dataFim,
+  roteiro,
+  limit = 50,
+  offset = 0,
+}) {
+  if (!cr) {
+    throw new Error("CR do perfil não informado");
+  }
 
   return repo.listarRondas({
+    cr,
+    dataInicio: dataInicio || null,
+    dataFim: dataFim || null,
+    roteiro: roteiro || null,
     limit,
     offset,
   });
@@ -19,7 +35,6 @@ function formatDateBR(date) {
   if (!date) return "";
 
   const d = new Date(date);
-
   const pad = (n) => String(n).padStart(2, "0");
 
   return (
@@ -34,9 +49,21 @@ function formatDateBR(date) {
 
 /**
  * Gera CSV das rondas no formato oficial
+ * 🔒 FILTRADO PELO CR DO PERFIL
+ * 📅 FILTRO OPCIONAL POR DATA
+ * 🧭 FILTRO OPCIONAL POR ROTEIRO
  */
-export async function gerarCsvRondas() {
-  const dados = await repo.listarRondasParaCsv();
+export async function gerarCsvRondas({ cr, dataInicio, dataFim, roteiro }) {
+  if (!cr) {
+    throw new Error("CR do perfil não informado");
+  }
+
+  const dados = await repo.listarRondasParaCsv(
+    cr,
+    dataInicio || null,
+    dataFim || null,
+    roteiro || null,
+  );
 
   const headers = [
     "Nome do Departamento",
@@ -66,7 +93,6 @@ export async function gerarCsvRondas() {
         .map((header) => {
           let value = row[header];
 
-          // 🔥 AJUSTE DO FORMATO DA DATA
           if (header === "Hora chegada") {
             value = formatDateBR(value);
           }
@@ -83,6 +109,7 @@ export async function gerarCsvRondas() {
 
 /**
  * Retorna status da última sincronização
+ * (controle global, NÃO filtra por CR)
  */
 export async function obterUltimaSincronizacao() {
   return repo.getUltimaSincronizacao();

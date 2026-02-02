@@ -26,13 +26,22 @@ app.use(express.json());
    ❗ TRATAR JSON INVÁLIDO
 ------------------------------------------------------ */
 app.use((err, req, res, next) => {
-  if (err instanceof SyntaxError && err.status === 400 && "body" in err) {
+  // 🔒 Só valida JSON em métodos que realmente usam body
+  const methodsWithBody = ["POST", "PUT", "PATCH"];
+
+  if (
+    methodsWithBody.includes(req.method) &&
+    err instanceof SyntaxError &&
+    err.status === 400 &&
+    "body" in err
+  ) {
     return res.status(400).json({
       sucesso: false,
       mensagem: "JSON inválido: verifique a sintaxe.",
     });
   }
-  next();
+
+  next(err);
 });
 
 /* ------------------------------------------------------

@@ -1,5 +1,5 @@
 import cron from "node-cron";
-import { sincronizarRondasCorp } from "../modules/rondasCorp/rondasCorp.service.js";
+import { sincronizarRondasCorp } from "../modules/rondasCorp/module/rondasCorp.service.js";
 
 cron.schedule("*/10 * * * *", async () => {
   console.log("[CRON] Executando sincronização RONDAS CORP...");
