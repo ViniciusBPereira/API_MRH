@@ -1,4 +1,4 @@
-import pool from "../../../config/db.js"; // banco LOCAL
+import pool from "../../../config/db.js";       // banco LOCAL
 import corpPool from "../../../config/corpDb.js"; // banco CORPORATIVO (VPN)
 
 /**
@@ -8,9 +8,7 @@ import corpPool from "../../../config/corpDb.js"; // banco CORPORATIVO (VPN)
  */
 
 /**
- * Busca rondas
- * - Busca múltiplos CRs
- * - Extrai o CR para persistência local
+ * Busca TODAS as rondas dos CRs informados
  * ⚠️ SEM filtro incremental
  */
 export async function buscarRondasCorp() {
@@ -42,41 +40,7 @@ export async function buscarRondasCorp() {
 
 /**
  * ============================
- * CONTROLE DE SINCRONIZAÇÃO
- * ============================
- */
-
-/**
- * Retorna os controles de sincronização
- */
-export async function getSyncControl() {
-  const result = await pool.query(`
-    SELECT last_sync_at, last_tarefa_numero
-    FROM sync_control
-    WHERE name = 'rondas_corp'
-  `);
-
-  return result.rows[0];
-}
-
-/**
- * Atualiza controles de sincronização
- */
-export async function updateSyncControl({ lastSyncAt, lastTarefaNumero }) {
-  await pool.query(
-    `
-      UPDATE sync_control
-      SET last_sync_at = $1,
-          last_tarefa_numero = $2
-      WHERE name = 'rondas_corp'
-    `,
-    [lastSyncAt, lastTarefaNumero],
-  );
-}
-
-/**
- * ============================
- * BANCO LOCAL (UPSERT)
+ * BANCO LOCAL (UPSERT MANUAL)
  * ============================
  */
 
@@ -99,7 +63,6 @@ export async function existsByTarefaNumero(tarefaNumero) {
 
 /**
  * Insere nova ronda
- * - data já contém o CR
  */
 export async function insertRonda(data) {
   const columns = Object.keys(data);
