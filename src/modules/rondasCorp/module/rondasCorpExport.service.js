@@ -1,7 +1,9 @@
 import * as repo from "./rondasCorpExport.repository.js";
 
 /**
- * Lista rondas para o frontend (JSON)
+ * =====================================================
+ * LISTAGEM PARA FRONTEND (JSON)
+ * =====================================================
  * 🔒 FILTRADO PELO CR DO PERFIL
  * 📅 FILTRO OPCIONAL POR DATA
  * 🧭 FILTRO OPCIONAL POR ROTEIRO
@@ -23,18 +25,24 @@ export async function listarRondas({
     dataInicio: dataInicio || null,
     dataFim: dataFim || null,
     roteiro: roteiro || null,
-    limit,
-    offset,
+    limit: Number(limit),
+    offset: Number(offset),
   });
 }
 
 /**
- * Formata data para: DD/MM/YYYY HH:mm:ss
+ * =====================================================
+ * FORMATA DATA PARA PADRÃO BR
+ * =====================================================
+ * DD/MM/YYYY HH:mm:ss
  */
 function formatDateBR(date) {
   if (!date) return "";
 
   const d = new Date(date);
+
+  if (isNaN(d.getTime())) return "";
+
   const pad = (n) => String(n).padStart(2, "0");
 
   return (
@@ -48,12 +56,20 @@ function formatDateBR(date) {
 }
 
 /**
- * Gera CSV das rondas no formato oficial
+ * =====================================================
+ * EXPORTAÇÃO CSV
+ * =====================================================
  * 🔒 FILTRADO PELO CR DO PERFIL
  * 📅 FILTRO OPCIONAL POR DATA
  * 🧭 FILTRO OPCIONAL POR ROTEIRO
+ * ❌ SEM PAGINAÇÃO
  */
-export async function gerarCsvRondas({ cr, dataInicio, dataFim, roteiro }) {
+export async function gerarCsvRondas({
+  cr,
+  dataInicio,
+  dataFim,
+  roteiro,
+}) {
   if (!cr) {
     throw new Error("CR do perfil não informado");
   }
@@ -78,7 +94,7 @@ export async function gerarCsvRondas({ cr, dataInicio, dataFim, roteiro }) {
   ];
 
   /**
-   * Escape seguro para CSV
+   * Escape seguro para CSV (Excel-safe)
    */
   const escape = (value) => {
     if (value === null || value === undefined) return "";
@@ -103,12 +119,14 @@ export async function gerarCsvRondas({ cr, dataInicio, dataFim, roteiro }) {
     ),
   ];
 
-  // BOM para Excel (UTF-8)
+  // BOM UTF-8 para Excel
   return "\ufeff" + lines.join("\n");
 }
 
 /**
- * Retorna status da última sincronização
+ * =====================================================
+ * STATUS DA ÚLTIMA SINCRONIZAÇÃO
+ * =====================================================
  * (controle global, NÃO filtra por CR)
  */
 export async function obterUltimaSincronizacao() {
