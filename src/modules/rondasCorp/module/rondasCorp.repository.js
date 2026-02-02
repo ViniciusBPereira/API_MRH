@@ -8,11 +8,12 @@ import corpPool from "../../../config/corpDb.js"; // banco CORPORATIVO (VPN)
  */
 
 /**
- * Busca rondas de forma incremental
+ * Busca rondas
  * - Busca múltiplos CRs
  * - Extrai o CR para persistência local
+ * ⚠️ SEM filtro incremental
  */
-export async function buscarRondasCorp(lastTarefaNumero) {
+export async function buscarRondasCorp() {
   const query = `
     SELECT
       tarefa.numero AS tarefa_numero,
@@ -31,12 +32,11 @@ export async function buscarRondasCorp(lastTarefaNumero) {
     FROM dbo.tarefa
     INNER JOIN dbo.recurso
       ON recurso.codigohash = tarefa.finalizadoporhash
-    WHERE LEFT(tarefa.estruturanivel2, 5) IN ('91826', '91962','91858')
-     -- AND tarefa.numero > $1
+    WHERE LEFT(tarefa.estruturanivel2, 5) IN ('91826', '91962', '91858')
     ORDER BY tarefa.numero
   `;
 
-  const result = await corpPool.query(query, [lastTarefaNumero]);
+  const result = await corpPool.query(query);
   return result.rows;
 }
 
