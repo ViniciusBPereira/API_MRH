@@ -68,8 +68,7 @@ export async function listarRondas({
       nome_roteiro,
       nome_cliente,
       nome_guarda,
-      hora_chegada,
-      evento
+      hora_chegada
     FROM corp_rondas
     WHERE ${where.join(" AND ")}
     ORDER BY hora_chegada DESC, tarefa_numero DESC
@@ -129,8 +128,7 @@ export async function listarRondasParaCsv(
       nome_roteiro      AS "Nome do Roteiro",
       nome_cliente      AS "Nome do Cliente",
       nome_guarda       AS "Nome do Guarda",
-      hora_chegada      AS "Hora chegada",
-      evento            AS "Evento"
+      hora_chegada      AS "Hora chegada"
     FROM corp_rondas
     WHERE ${where.join(" AND ")}
     ORDER BY hora_chegada DESC, tarefa_numero DESC
