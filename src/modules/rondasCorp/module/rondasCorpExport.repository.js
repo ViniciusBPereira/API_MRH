@@ -25,7 +25,7 @@ export async function listarRondas({
   const params = [cr];
   const where = [
     "cr = $1",
-    "nome_roteiro NOT ILIKE '%visita%'", // 👈 EXCLUSÃO AQUI
+    "nome_roteiro NOT ILIKE '%visita%'",
   ];
 
   /**
@@ -44,7 +44,7 @@ export async function listarRondas({
 
     params.push(dtInicio, dtFim);
     where.push(
-      `hora_chegada BETWEEN $${params.length - 1} AND $${params.length}`,
+      `hora_chegada BETWEEN $${params.length - 1} AND $${params.length}`
     );
   }
 
@@ -68,11 +68,8 @@ export async function listarRondas({
       nome_roteiro,
       nome_cliente,
       nome_guarda,
-      numero_dispositivo,
       hora_chegada,
-      evento,
-      processing_mode_for_alarm,
-      remark
+      evento
     FROM corp_rondas
     WHERE ${where.join(" AND ")}
     ORDER BY hora_chegada DESC, tarefa_numero DESC
@@ -102,7 +99,7 @@ export async function listarRondasParaCsv(
   const params = [cr];
   const where = [
     "cr = $1",
-    "nome_roteiro NOT ILIKE '%visita%'", // 👈 EXCLUSÃO AQUI
+    "nome_roteiro NOT ILIKE '%visita%'",
   ];
 
   if (dataInicio || dataFim) {
@@ -116,7 +113,7 @@ export async function listarRondasParaCsv(
 
     params.push(dtInicio, dtFim);
     where.push(
-      `hora_chegada BETWEEN $${params.length - 1} AND $${params.length}`,
+      `hora_chegada BETWEEN $${params.length - 1} AND $${params.length}`
     );
   }
 
@@ -128,15 +125,12 @@ export async function listarRondasParaCsv(
   const result = await pool.query(
     `
     SELECT
-      nome_departamento         AS "Nome do Departamento",
-      nome_roteiro              AS "Nome do Roteiro",
-      nome_cliente              AS "Nome do Cliente",
-      nome_guarda               AS "Nome do Guarda",
-      numero_dispositivo        AS "Numero do Dispositivo",
-      hora_chegada              AS "Hora chegada",
-      evento                    AS "Evento",
-      processing_mode_for_alarm AS "processing mode for alarm",
-      remark                    AS "remark"
+      nome_departamento AS "Nome do Departamento",
+      nome_roteiro      AS "Nome do Roteiro",
+      nome_cliente      AS "Nome do Cliente",
+      nome_guarda       AS "Nome do Guarda",
+      hora_chegada      AS "Hora chegada",
+      evento            AS "Evento"
     FROM corp_rondas
     WHERE ${where.join(" AND ")}
     ORDER BY hora_chegada DESC, tarefa_numero DESC
