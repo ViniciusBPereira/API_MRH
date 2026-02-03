@@ -104,16 +104,18 @@ export async function gerarCsvRondas({
     roteiro || null,
   );
 
+  /**
+   * =====================================================
+   * HEADERS (AJUSTADOS)
+   * =====================================================
+   */
   const headers = [
     "Nome do Departamento",
     "Nome do Roteiro",
     "Nome do Cliente",
     "Nome do Guarda",
-    "Numero do Dispositivo",
     "Hora chegada",
     "Evento",
-    "processing mode for alarm",
-    "remark",
   ];
 
   /**
@@ -144,8 +146,8 @@ export async function gerarCsvRondas({
   };
 
   const lines = [
-    linhaPeriodo, // 👈 Linha 1 (título)
-    headers.join(";"), // 👈 Linha 2 (header)
+    linhaPeriodo,          // Linha 1 — título
+    headers.join(";"),     // Linha 2 — cabeçalho
     ...dados.map((row) =>
       headers
         .map((header) => {
