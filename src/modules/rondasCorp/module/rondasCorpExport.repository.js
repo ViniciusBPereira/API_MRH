@@ -5,8 +5,7 @@ import pool from "../../../config/db.js";
  * LISTAGEM PARA FRONTEND
  * =====================================================
  * 🔒 Filtrado por CR
- * 📅 Filtro opcional por DATA
- * ⏰ Filtro opcional por HORA
+ * 📅⏰ Filtro opcional por INTERVALO DATETIME
  * 🧭 Filtro opcional por ROTEIRO (contém)
  */
 export async function listarRondas({
@@ -23,31 +22,29 @@ export async function listarRondas({
   const where = ["cr = $1"];
 
   /**
-   * =====================
-   * DATA + HORA (INÍCIO)
-   * =====================
+   * =====================================================
+   * INTERVALO DATETIME (CORRETO)
+   * =====================================================
    */
-  if (dataInicio) {
-    const horaIni = horaInicio ? normalizarHora(horaInicio) : "00:00:00";
-    params.push(`${dataInicio} ${horaIni}`);
-    where.push(`hora_chegada >= $${params.length}::timestamp`);
+  if (dataInicio || dataFim) {
+    const dtInicio = dataInicio
+      ? `${dataInicio} ${normalizarHora(horaInicio) || "00:00:00"}`
+      : "0001-01-01 00:00:00";
+
+    const dtFim = dataFim
+      ? `${dataFim} ${normalizarHora(horaFim) || "23:59:59"}`
+      : "9999-12-31 23:59:59";
+
+    params.push(dtInicio, dtFim);
+    where.push(
+      `hora_chegada BETWEEN $${params.length - 1}::timestamp AND $${params.length}::timestamp`,
+    );
   }
 
   /**
-   * =====================
-   * DATA + HORA (FIM)
-   * =====================
-   */
-  if (dataFim) {
-    const horaFimFinal = horaFim ? normalizarHora(horaFim) : "23:59:59";
-    params.push(`${dataFim} ${horaFimFinal}`);
-    where.push(`hora_chegada <= $${params.length}::timestamp`);
-  }
-
-  /**
-   * =====================
+   * =====================================================
    * ROTEIRO (CONTÉM)
-   * =====================
+   * =====================================================
    */
   if (roteiro) {
     params.push(`%${roteiro}%`);
@@ -87,10 +84,6 @@ export async function listarRondas({
  * =====================================================
  * EXPORTAÇÃO CSV (SEM PAGINAÇÃO)
  * =====================================================
- * 🔒 Filtrado por CR
- * 📅 Filtro opcional por DATA
- * ⏰ Filtro opcional por HORA
- * 🧭 Filtro opcional por ROTEIRO
  */
 export async function listarRondasParaCsv(
   cr,
@@ -103,16 +96,19 @@ export async function listarRondasParaCsv(
   const params = [cr];
   const where = ["cr = $1"];
 
-  if (dataInicio) {
-    const horaIni = horaInicio ? normalizarHora(horaInicio) : "00:00:00";
-    params.push(`${dataInicio} ${horaIni}`);
-    where.push(`hora_chegada >= $${params.length}::timestamp`);
-  }
+  if (dataInicio || dataFim) {
+    const dtInicio = dataInicio
+      ? `${dataInicio} ${normalizarHora(horaInicio) || "00:00:00"}`
+      : "0001-01-01 00:00:00";
 
-  if (dataFim) {
-    const horaFimFinal = horaFim ? normalizarHora(horaFim) : "23:59:59";
-    params.push(`${dataFim} ${horaFimFinal}`);
-    where.push(`hora_chegada <= $${params.length}::timestamp`);
+    const dtFim = dataFim
+      ? `${dataFim} ${normalizarHora(horaFim) || "23:59:59"}`
+      : "9999-12-31 23:59:59";
+
+    params.push(dtInicio, dtFim);
+    where.push(
+      `hora_chegada BETWEEN $${params.length - 1}::timestamp AND $${params.length}::timestamp`,
+    );
   }
 
   if (roteiro) {
