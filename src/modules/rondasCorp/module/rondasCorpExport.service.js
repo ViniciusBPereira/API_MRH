@@ -40,6 +40,8 @@ export async function listarRondas({
  * FORMATA DATA PARA PADRÃO BR (CSV)
  * =====================================================
  * DD/MM/YYYY HH:mm:ss
+ *
+ * ⚠️ Somente para CSV
  */
 function formatDateBR(date) {
   if (!date) return "";

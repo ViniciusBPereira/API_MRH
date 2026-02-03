@@ -10,19 +10,10 @@ import * as service from "./rondasCorpExport.service.js";
  * 📅 FILTRO OPCIONAL POR DATA
  * ⏰ FILTRO OPCIONAL POR HORA
  * 🧭 FILTRO OPCIONAL POR ROTEIRO
- *
- * Query params:
- * - limit
- * - offset
- * - dataInicio (YYYY-MM-DD)
- * - dataFim (YYYY-MM-DD)
- * - horaInicio (HH:mm)
- * - horaFim (HH:mm)
- * - roteiro (string, contém)
  */
 export async function listar(req, res) {
   try {
-    const {
+    let {
       limit = 50,
       offset = 0,
       dataInicio,
@@ -32,7 +23,7 @@ export async function listar(req, res) {
       roteiro,
     } = req.query;
 
-    // 🔥 CR vem EXCLUSIVAMENTE do token
+    // 🔐 CR vem do token
     const cr = req.user?.cr;
 
     if (!cr) {
@@ -41,10 +32,44 @@ export async function listar(req, res) {
       });
     }
 
+    // ===============================
+    // Normalizações
+    // ===============================
+    limit = Number(limit);
+    offset = Number(offset);
+
+    dataInicio = dataInicio || null;
+    dataFim = dataFim || null;
+    horaInicio = horaInicio || null;
+    horaFim = horaFim || null;
+    roteiro = roteiro || null;
+
+    // ===============================
+    // Validação de intervalo
+    // ===============================
+    if (dataInicio && dataFim) {
+      if (dataInicio > dataFim) {
+        return res.status(400).json({
+          error: "Data início não pode ser maior que data fim",
+        });
+      }
+
+      if (
+        dataInicio === dataFim &&
+        horaInicio &&
+        horaFim &&
+        horaInicio > horaFim
+      ) {
+        return res.status(400).json({
+          error: "Hora início não pode ser maior que hora fim",
+        });
+      }
+    }
+
     const dados = await service.listarRondas({
       cr,
-      limit: Number(limit),
-      offset: Number(offset),
+      limit,
+      offset,
       dataInicio,
       dataFim,
       horaInicio,
@@ -67,22 +92,10 @@ export async function listar(req, res) {
  * GET /rondas/export/csv
  * =====================================================
  * Exporta rondas em CSV
- *
- * 🔒 FILTRADO PELO CR DO PERFIL (TOKEN)
- * 📅 FILTRO OPCIONAL POR DATA
- * ⏰ FILTRO OPCIONAL POR HORA
- * 🧭 FILTRO OPCIONAL POR ROTEIRO
- *
- * Query params:
- * - dataInicio
- * - dataFim
- * - horaInicio
- * - horaFim
- * - roteiro
  */
 export async function exportarCsv(req, res) {
   try {
-    const { dataInicio, dataFim, horaInicio, horaFim, roteiro } = req.query;
+    let { dataInicio, dataFim, horaInicio, horaFim, roteiro } = req.query;
 
     const cr = req.user?.cr;
 
@@ -91,6 +104,12 @@ export async function exportarCsv(req, res) {
         error: "CR do perfil não encontrado",
       });
     }
+
+    dataInicio = dataInicio || null;
+    dataFim = dataFim || null;
+    horaInicio = horaInicio || null;
+    horaFim = horaFim || null;
+    roteiro = roteiro || null;
 
     const csv = await service.gerarCsvRondas({
       cr,
@@ -121,7 +140,6 @@ export async function exportarCsv(req, res) {
  * =====================================================
  * GET /rondas/ultima-sincronizacao
  * =====================================================
- * (informação global, NÃO depende de CR)
  */
 export async function ultimaSincronizacao(req, res) {
   try {

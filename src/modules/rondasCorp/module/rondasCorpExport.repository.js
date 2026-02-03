@@ -20,7 +20,7 @@ export async function listarRondas({
   offset = 0,
 }) {
   const params = [cr];
-  let whereClause = "WHERE cr = $1";
+  const where = ["cr = $1"];
 
   /**
    * =====================
@@ -28,9 +28,9 @@ export async function listarRondas({
    * =====================
    */
   if (dataInicio) {
-    const horaIni = horaInicio || "00:00:00";
+    const horaIni = horaInicio ? normalizarHora(horaInicio) : "00:00:00";
     params.push(`${dataInicio} ${horaIni}`);
-    whereClause += ` AND hora_chegada >= $${params.length}::timestamp`;
+    where.push(`hora_chegada >= $${params.length}::timestamp`);
   }
 
   /**
@@ -39,19 +39,19 @@ export async function listarRondas({
    * =====================
    */
   if (dataFim) {
-    const horaFimFinal = horaFim || "23:59:59";
+    const horaFimFinal = horaFim ? normalizarHora(horaFim) : "23:59:59";
     params.push(`${dataFim} ${horaFimFinal}`);
-    whereClause += ` AND hora_chegada <= $${params.length}::timestamp`;
+    where.push(`hora_chegada <= $${params.length}::timestamp`);
   }
 
   /**
    * =====================
-   * ROTEIRO
+   * ROTEIRO (CONTÉM)
    * =====================
    */
   if (roteiro) {
     params.push(`%${roteiro}%`);
-    whereClause += ` AND nome_roteiro ILIKE $${params.length}`;
+    where.push(`nome_roteiro ILIKE $${params.length}`);
   }
 
   params.push(limit, offset);
@@ -70,7 +70,7 @@ export async function listarRondas({
       processing_mode_for_alarm,
       remark
     FROM corp_rondas
-    ${whereClause}
+    WHERE ${where.join(" AND ")}
     ORDER BY
       hora_chegada DESC,
       tarefa_numero DESC
@@ -101,23 +101,23 @@ export async function listarRondasParaCsv(
   roteiro,
 ) {
   const params = [cr];
-  let whereClause = "WHERE cr = $1";
+  const where = ["cr = $1"];
 
   if (dataInicio) {
-    const horaIni = horaInicio || "00:00:00";
+    const horaIni = horaInicio ? normalizarHora(horaInicio) : "00:00:00";
     params.push(`${dataInicio} ${horaIni}`);
-    whereClause += ` AND hora_chegada >= $${params.length}::timestamp`;
+    where.push(`hora_chegada >= $${params.length}::timestamp`);
   }
 
   if (dataFim) {
-    const horaFimFinal = horaFim || "23:59:59";
+    const horaFimFinal = horaFim ? normalizarHora(horaFim) : "23:59:59";
     params.push(`${dataFim} ${horaFimFinal}`);
-    whereClause += ` AND hora_chegada <= $${params.length}::timestamp`;
+    where.push(`hora_chegada <= $${params.length}::timestamp`);
   }
 
   if (roteiro) {
     params.push(`%${roteiro}%`);
-    whereClause += ` AND nome_roteiro ILIKE $${params.length}`;
+    where.push(`nome_roteiro ILIKE $${params.length}`);
   }
 
   const result = await pool.query(
@@ -133,7 +133,7 @@ export async function listarRondasParaCsv(
       processing_mode_for_alarm AS "processing mode for alarm",
       remark                    AS "remark"
     FROM corp_rondas
-    ${whereClause}
+    WHERE ${where.join(" AND ")}
     ORDER BY
       hora_chegada DESC,
       tarefa_numero DESC
@@ -142,6 +142,20 @@ export async function listarRondasParaCsv(
   );
 
   return result.rows;
+}
+
+/**
+ * =====================================================
+ * NORMALIZA HORA
+ * =====================================================
+ * Aceita:
+ * - HH:mm
+ * - HH:mm:ss
+ * Retorna sempre HH:mm:ss
+ */
+function normalizarHora(hora) {
+  if (!hora) return null;
+  return hora.length === 5 ? `${hora}:00` : hora;
 }
 
 /**
