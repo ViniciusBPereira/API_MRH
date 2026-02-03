@@ -40,8 +40,6 @@ export async function listarRondas({
  * FORMATA DATA PARA PADRÃO BR (CSV)
  * =====================================================
  * DD/MM/YYYY HH:mm:ss
- *
- * ⚠️ Somente para CSV
  */
 function formatDateBR(date) {
   if (!date) return "";
@@ -63,12 +61,26 @@ function formatDateBR(date) {
 
 /**
  * =====================================================
+ * FORMATA DATA + HORA PARA CABEÇALHO CSV
+ * =====================================================
+ * Saída: 26/1/2026 7:00:00
+ */
+function formatDateHoraHeader(data, hora) {
+  if (!data) return "";
+
+  const h = hora || "00:00:00";
+  const horaFinal = h.length === 5 ? `${h}:00` : h;
+
+  const [yyyy, mm, dd] = data.split("-");
+  return `${Number(dd)}/${Number(mm)}/${yyyy} ${horaFinal}`;
+}
+
+/**
+ * =====================================================
  * EXPORTAÇÃO CSV
  * =====================================================
  * 🔒 FILTRADO PELO CR DO PERFIL
- * 📅 FILTRO OPCIONAL POR DATA
- * ⏰ FILTRO OPCIONAL POR HORA
- * 🧭 FILTRO OPCIONAL POR ROTEIRO
+ * 📅⏰ FILTRO POR INTERVALO DATA/HORA
  * ❌ SEM PAGINAÇÃO
  */
 export async function gerarCsvRondas({
@@ -105,6 +117,24 @@ export async function gerarCsvRondas({
   ];
 
   /**
+   * =====================================================
+   * LINHA 1 — PERÍODO DO RELATÓRIO
+   * =====================================================
+   */
+  let linhaPeriodo = "Dados Historicos";
+
+  if (dataInicio || dataFim) {
+    const inicio = formatDateHoraHeader(dataInicio, horaInicio);
+    const fim = formatDateHoraHeader(dataFim, horaFim);
+
+    if (inicio && fim) {
+      linhaPeriodo += ` ${inicio} Para ${fim}`;
+    } else if (inicio) {
+      linhaPeriodo += ` ${inicio}`;
+    }
+  }
+
+  /**
    * Escape seguro para CSV (Excel-safe)
    */
   const escape = (value) => {
@@ -114,7 +144,9 @@ export async function gerarCsvRondas({
   };
 
   const lines = [
-    headers.join(";"),
+    linhaPeriodo, // 👈 Linha 1 (título)
+    "", // 👈 Linha 2 (vazia)
+    headers.join(";"), // 👈 Linha 3 (header)
     ...dados.map((row) =>
       headers
         .map((header) => {
