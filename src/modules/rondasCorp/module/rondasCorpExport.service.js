@@ -82,6 +82,12 @@ function formatDateHoraHeader(data, hora) {
  * 🔒 FILTRADO PELO CR DO PERFIL
  * 📅⏰ FILTRO POR INTERVALO DATA/HORA
  * ❌ SEM PAGINAÇÃO
+ *
+ * ❌ NÃO EXPORTA:
+ * - Evento
+ * - Número do dispositivo
+ * - processing mode for alarm
+ * - remark
  */
 export async function gerarCsvRondas({
   cr,
@@ -106,7 +112,7 @@ export async function gerarCsvRondas({
 
   /**
    * =====================================================
-   * HEADERS (AJUSTADOS)
+   * HEADERS FINAIS DO CSV
    * =====================================================
    */
   const headers = [
@@ -115,7 +121,6 @@ export async function gerarCsvRondas({
     "Nome do Cliente",
     "Nome do Guarda",
     "Hora chegada",
-    "Evento",
   ];
 
   /**
@@ -146,8 +151,8 @@ export async function gerarCsvRondas({
   };
 
   const lines = [
-    linhaPeriodo,          // Linha 1 — título
-    headers.join(";"),     // Linha 2 — cabeçalho
+    linhaPeriodo,        // Linha 1 — título
+    headers.join(";"),   // Linha 2 — cabeçalho
     ...dados.map((row) =>
       headers
         .map((header) => {
