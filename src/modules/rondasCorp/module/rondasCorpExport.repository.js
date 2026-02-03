@@ -7,6 +7,9 @@ import pool from "../../../config/db.js";
  * 🔒 Filtrado por CR
  * 📅⏰ Filtro opcional por INTERVALO DATETIME
  * 🧭 Filtro opcional por ROTEIRO (contém)
+ *
+ * ⚠️ hora_chegada = timestamp WITHOUT time zone
+ * ⚠️ NÃO CONVERTER TIMEZONE
  */
 export async function listarRondas({
   cr,
@@ -23,7 +26,7 @@ export async function listarRondas({
 
   /**
    * =====================================================
-   * INTERVALO DATETIME (CORRETO)
+   * INTERVALO DATETIME (STRING PURA)
    * =====================================================
    */
   if (dataInicio || dataFim) {
@@ -36,8 +39,9 @@ export async function listarRondas({
       : "9999-12-31 23:59:59";
 
     params.push(dtInicio, dtFim);
+
     where.push(
-      `hora_chegada BETWEEN $${params.length - 1}::timestamp AND $${params.length}::timestamp`,
+      `hora_chegada BETWEEN $${params.length - 1} AND $${params.length}`,
     );
   }
 
@@ -68,9 +72,7 @@ export async function listarRondas({
       remark
     FROM corp_rondas
     WHERE ${where.join(" AND ")}
-    ORDER BY
-      hora_chegada DESC,
-      tarefa_numero DESC
+    ORDER BY hora_chegada DESC, tarefa_numero DESC
     LIMIT $${params.length - 1}
     OFFSET $${params.length}
     `,
@@ -82,7 +84,7 @@ export async function listarRondas({
 
 /**
  * =====================================================
- * EXPORTAÇÃO CSV (SEM PAGINAÇÃO)
+ * EXPORTAÇÃO CSV
  * =====================================================
  */
 export async function listarRondasParaCsv(
@@ -107,7 +109,7 @@ export async function listarRondasParaCsv(
 
     params.push(dtInicio, dtFim);
     where.push(
-      `hora_chegada BETWEEN $${params.length - 1}::timestamp AND $${params.length}::timestamp`,
+      `hora_chegada BETWEEN $${params.length - 1} AND $${params.length}`,
     );
   }
 
@@ -130,9 +132,7 @@ export async function listarRondasParaCsv(
       remark                    AS "remark"
     FROM corp_rondas
     WHERE ${where.join(" AND ")}
-    ORDER BY
-      hora_chegada DESC,
-      tarefa_numero DESC
+    ORDER BY hora_chegada DESC, tarefa_numero DESC
     `,
     params,
   );
@@ -144,10 +144,6 @@ export async function listarRondasParaCsv(
  * =====================================================
  * NORMALIZA HORA
  * =====================================================
- * Aceita:
- * - HH:mm
- * - HH:mm:ss
- * Retorna sempre HH:mm:ss
  */
 function normalizarHora(hora) {
   if (!hora) return null;
@@ -161,9 +157,7 @@ function normalizarHora(hora) {
  */
 export async function getUltimaSincronizacao() {
   const result = await pool.query(`
-    SELECT
-      last_sync_at,
-      last_tarefa_numero
+    SELECT last_sync_at, last_tarefa_numero
     FROM sync_control
     WHERE name = 'rondas_corp'
   `);
