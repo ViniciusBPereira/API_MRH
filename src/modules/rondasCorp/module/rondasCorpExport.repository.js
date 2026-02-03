@@ -8,7 +8,10 @@ import pool from "../../../config/db.js";
  * 📅⏰ Filtro opcional por INTERVALO DATETIME
  * 🧭 Filtro opcional por ROTEIRO (contém)
  *
- * ❌ EXCLUI automaticamente roteiros com "Visita"
+ * ❌ EXCLUI automaticamente:
+ *   - nome_roteiro contendo "Visita"
+ *   - nome_guarda = "Sistema"
+ *
  * ⚠️ hora_chegada = timestamp WITHOUT time zone
  * ⚠️ NÃO CONVERTER TIMEZONE
  */
@@ -26,6 +29,7 @@ export async function listarRondas({
   const where = [
     "cr = $1",
     "nome_roteiro NOT ILIKE '%visita%'",
+    "nome_guarda NOT ILIKE 'sistema'", // 👈 NOVO FILTRO
   ];
 
   /**
@@ -85,7 +89,9 @@ export async function listarRondas({
  * =====================================================
  * EXPORTAÇÃO CSV
  * =====================================================
- * ❌ EXCLUI automaticamente roteiros com "Visita"
+ * ❌ EXCLUI automaticamente:
+ *   - nome_roteiro contendo "Visita"
+ *   - nome_guarda = "Sistema"
  */
 export async function listarRondasParaCsv(
   cr,
@@ -99,6 +105,7 @@ export async function listarRondasParaCsv(
   const where = [
     "cr = $1",
     "nome_roteiro NOT ILIKE '%visita%'",
+    "nome_guarda NOT ILIKE 'sistema'", // 👈 NOVO FILTRO
   ];
 
   if (dataInicio || dataFim) {
