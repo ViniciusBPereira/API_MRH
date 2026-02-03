@@ -8,6 +8,7 @@ import pool from "../../../config/db.js";
  * 📅⏰ Filtro opcional por INTERVALO DATETIME
  * 🧭 Filtro opcional por ROTEIRO (contém)
  *
+ * ❌ EXCLUI automaticamente roteiros com "Visita"
  * ⚠️ hora_chegada = timestamp WITHOUT time zone
  * ⚠️ NÃO CONVERTER TIMEZONE
  */
@@ -22,7 +23,10 @@ export async function listarRondas({
   offset = 0,
 }) {
   const params = [cr];
-  const where = ["cr = $1"];
+  const where = [
+    "cr = $1",
+    "nome_roteiro NOT ILIKE '%visita%'", // 👈 EXCLUSÃO AQUI
+  ];
 
   /**
    * =====================================================
@@ -39,7 +43,6 @@ export async function listarRondas({
       : "9999-12-31 23:59:59";
 
     params.push(dtInicio, dtFim);
-
     where.push(
       `hora_chegada BETWEEN $${params.length - 1} AND $${params.length}`,
     );
@@ -86,6 +89,7 @@ export async function listarRondas({
  * =====================================================
  * EXPORTAÇÃO CSV
  * =====================================================
+ * ❌ EXCLUI automaticamente roteiros com "Visita"
  */
 export async function listarRondasParaCsv(
   cr,
@@ -96,7 +100,10 @@ export async function listarRondasParaCsv(
   roteiro,
 ) {
   const params = [cr];
-  const where = ["cr = $1"];
+  const where = [
+    "cr = $1",
+    "nome_roteiro NOT ILIKE '%visita%'", // 👈 EXCLUSÃO AQUI
+  ];
 
   if (dataInicio || dataFim) {
     const dtInicio = dataInicio
