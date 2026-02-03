@@ -6,12 +6,15 @@ import * as repo from "./rondasCorpExport.repository.js";
  * =====================================================
  * 🔒 FILTRADO PELO CR DO PERFIL
  * 📅 FILTRO OPCIONAL POR DATA
+ * ⏰ FILTRO OPCIONAL POR HORA
  * 🧭 FILTRO OPCIONAL POR ROTEIRO
  */
 export async function listarRondas({
   cr,
   dataInicio,
   dataFim,
+  horaInicio,
+  horaFim,
   roteiro,
   limit = 50,
   offset = 0,
@@ -24,6 +27,8 @@ export async function listarRondas({
     cr,
     dataInicio: dataInicio || null,
     dataFim: dataFim || null,
+    horaInicio: horaInicio || null,
+    horaFim: horaFim || null,
     roteiro: roteiro || null,
     limit: Number(limit),
     offset: Number(offset),
@@ -32,7 +37,7 @@ export async function listarRondas({
 
 /**
  * =====================================================
- * FORMATA DATA PARA PADRÃO BR
+ * FORMATA DATA PARA PADRÃO BR (CSV)
  * =====================================================
  * DD/MM/YYYY HH:mm:ss
  */
@@ -40,7 +45,6 @@ function formatDateBR(date) {
   if (!date) return "";
 
   const d = new Date(date);
-
   if (isNaN(d.getTime())) return "";
 
   const pad = (n) => String(n).padStart(2, "0");
@@ -61,6 +65,7 @@ function formatDateBR(date) {
  * =====================================================
  * 🔒 FILTRADO PELO CR DO PERFIL
  * 📅 FILTRO OPCIONAL POR DATA
+ * ⏰ FILTRO OPCIONAL POR HORA
  * 🧭 FILTRO OPCIONAL POR ROTEIRO
  * ❌ SEM PAGINAÇÃO
  */
@@ -68,6 +73,8 @@ export async function gerarCsvRondas({
   cr,
   dataInicio,
   dataFim,
+  horaInicio,
+  horaFim,
   roteiro,
 }) {
   if (!cr) {
@@ -78,6 +85,8 @@ export async function gerarCsvRondas({
     cr,
     dataInicio || null,
     dataFim || null,
+    horaInicio || null,
+    horaFim || null,
     roteiro || null,
   );
 

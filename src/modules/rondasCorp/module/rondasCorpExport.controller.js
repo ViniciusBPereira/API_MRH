@@ -1,10 +1,14 @@
 import * as service from "./rondasCorpExport.service.js";
 
 /**
+ * =====================================================
  * GET /rondas
+ * =====================================================
  * Lista rondas para o frontend (JSON)
+ *
  * 🔒 FILTRADO PELO CR DO PERFIL (TOKEN)
  * 📅 FILTRO OPCIONAL POR DATA
+ * ⏰ FILTRO OPCIONAL POR HORA
  * 🧭 FILTRO OPCIONAL POR ROTEIRO
  *
  * Query params:
@@ -12,11 +16,21 @@ import * as service from "./rondasCorpExport.service.js";
  * - offset
  * - dataInicio (YYYY-MM-DD)
  * - dataFim (YYYY-MM-DD)
+ * - horaInicio (HH:mm)
+ * - horaFim (HH:mm)
  * - roteiro (string, contém)
  */
 export async function listar(req, res) {
   try {
-    const { limit = 50, offset = 0, dataInicio, dataFim, roteiro } = req.query;
+    const {
+      limit = 50,
+      offset = 0,
+      dataInicio,
+      dataFim,
+      horaInicio,
+      horaFim,
+      roteiro,
+    } = req.query;
 
     // 🔥 CR vem EXCLUSIVAMENTE do token
     const cr = req.user?.cr;
@@ -33,6 +47,8 @@ export async function listar(req, res) {
       offset: Number(offset),
       dataInicio,
       dataFim,
+      horaInicio,
+      horaFim,
       roteiro,
     });
 
@@ -47,20 +63,26 @@ export async function listar(req, res) {
 }
 
 /**
+ * =====================================================
  * GET /rondas/export/csv
+ * =====================================================
  * Exporta rondas em CSV
+ *
  * 🔒 FILTRADO PELO CR DO PERFIL (TOKEN)
  * 📅 FILTRO OPCIONAL POR DATA
+ * ⏰ FILTRO OPCIONAL POR HORA
  * 🧭 FILTRO OPCIONAL POR ROTEIRO
  *
  * Query params:
  * - dataInicio
  * - dataFim
+ * - horaInicio
+ * - horaFim
  * - roteiro
  */
 export async function exportarCsv(req, res) {
   try {
-    const { dataInicio, dataFim, roteiro } = req.query;
+    const { dataInicio, dataFim, horaInicio, horaFim, roteiro } = req.query;
 
     const cr = req.user?.cr;
 
@@ -74,6 +96,8 @@ export async function exportarCsv(req, res) {
       cr,
       dataInicio,
       dataFim,
+      horaInicio,
+      horaFim,
       roteiro,
     });
 
@@ -94,8 +118,10 @@ export async function exportarCsv(req, res) {
 }
 
 /**
+ * =====================================================
  * GET /rondas/ultima-sincronizacao
- * (informação global, não depende de CR)
+ * =====================================================
+ * (informação global, NÃO depende de CR)
  */
 export async function ultimaSincronizacao(req, res) {
   try {

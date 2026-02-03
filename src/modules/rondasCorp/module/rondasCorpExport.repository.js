@@ -5,13 +5,16 @@ import pool from "../../../config/db.js";
  * LISTAGEM PARA FRONTEND
  * =====================================================
  * 🔒 Filtrado por CR
- * 📅 Filtro opcional por DATA (ignora hora)
+ * 📅 Filtro opcional por DATA
+ * ⏰ Filtro opcional por HORA
  * 🧭 Filtro opcional por ROTEIRO (contém)
  */
 export async function listarRondas({
   cr,
   dataInicio,
   dataFim,
+  horaInicio,
+  horaFim,
   roteiro,
   limit = 50,
   offset = 0,
@@ -19,16 +22,33 @@ export async function listarRondas({
   const params = [cr];
   let whereClause = "WHERE cr = $1";
 
+  /**
+   * =====================
+   * DATA + HORA (INÍCIO)
+   * =====================
+   */
   if (dataInicio) {
-    params.push(dataInicio);
-    whereClause += ` AND hora_chegada::date >= $${params.length}::date`;
+    const horaIni = horaInicio || "00:00:00";
+    params.push(`${dataInicio} ${horaIni}`);
+    whereClause += ` AND hora_chegada >= $${params.length}::timestamp`;
   }
 
+  /**
+   * =====================
+   * DATA + HORA (FIM)
+   * =====================
+   */
   if (dataFim) {
-    params.push(dataFim);
-    whereClause += ` AND hora_chegada::date <= $${params.length}::date`;
+    const horaFimFinal = horaFim || "23:59:59";
+    params.push(`${dataFim} ${horaFimFinal}`);
+    whereClause += ` AND hora_chegada <= $${params.length}::timestamp`;
   }
 
+  /**
+   * =====================
+   * ROTEIRO
+   * =====================
+   */
   if (roteiro) {
     params.push(`%${roteiro}%`);
     whereClause += ` AND nome_roteiro ILIKE $${params.length}`;
@@ -69,25 +89,30 @@ export async function listarRondas({
  * =====================================================
  * 🔒 Filtrado por CR
  * 📅 Filtro opcional por DATA
+ * ⏰ Filtro opcional por HORA
  * 🧭 Filtro opcional por ROTEIRO
  */
 export async function listarRondasParaCsv(
   cr,
   dataInicio,
   dataFim,
+  horaInicio,
+  horaFim,
   roteiro,
 ) {
   const params = [cr];
   let whereClause = "WHERE cr = $1";
 
   if (dataInicio) {
-    params.push(dataInicio);
-    whereClause += ` AND hora_chegada::date >= $${params.length}::date`;
+    const horaIni = horaInicio || "00:00:00";
+    params.push(`${dataInicio} ${horaIni}`);
+    whereClause += ` AND hora_chegada >= $${params.length}::timestamp`;
   }
 
   if (dataFim) {
-    params.push(dataFim);
-    whereClause += ` AND hora_chegada::date <= $${params.length}::date`;
+    const horaFimFinal = horaFim || "23:59:59";
+    params.push(`${dataFim} ${horaFimFinal}`);
+    whereClause += ` AND hora_chegada <= $${params.length}::timestamp`;
   }
 
   if (roteiro) {
