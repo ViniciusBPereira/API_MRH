@@ -14,24 +14,25 @@ import corpPool from "../../../config/corpDb.js"; // banco CORPORATIVO (VPN)
 export async function buscarRondasCorp() {
   const query = `
     SELECT
-      tarefa.numero AS tarefa_numero,
-      LEFT(tarefa.estruturanivel2, 5) AS cr,
-      split_part(tarefa.estruturahierarquiadescricao, '/', 5)
-        AS nome_departamento,
-      tarefa.nome AS nome_roteiro,
-      split_part(tarefa.estruturahierarquiadescricao, '/', 6)
-        AS nome_cliente,
-      recurso.nome AS nome_guarda,
-      NULL AS numero_dispositivo,
-      tarefa.terminoreal AS hora_chegada,
-      NULL AS evento,
-      NULL AS processing_mode_for_alarm,
-      NULL AS remark
-    FROM dbo.tarefa
-    INNER JOIN dbo.recurso
-      ON recurso.codigohash = tarefa.finalizadoporhash
-    WHERE LEFT(tarefa.estruturanivel2, 5) IN ('91826', '91962', '91858')
-    ORDER BY tarefa.numero
+    tarefa.numero AS tarefa_numero,
+    LEFT(tarefa.estruturanivel2, 5) AS cr,
+    split_part(tarefa.estruturahierarquiadescricao, '/', 5) AS nome_departamento,
+    tarefa.nome AS nome_roteiro,
+    split_part(tarefa.estruturahierarquiadescricao, '/', 6) AS nome_cliente,
+    recurso.nome AS nome_guarda,
+    NULL AS numero_dispositivo,
+    tarefa.terminoreal AS hora_chegada,
+    NULL AS evento,
+    NULL AS processing_mode_for_alarm,
+    NULL AS remark
+FROM dbo.tarefa
+INNER JOIN dbo.recurso
+    ON recurso.codigohash = tarefa.finalizadoporhash
+WHERE
+    LEFT(tarefa.estruturanivel2, 5) IN ('91826', '91962', '91858')
+    AND tarefa.terminoreal::date >= '2026-02-03'
+ORDER BY tarefa.numero;
+
   `;
 
   const result = await corpPool.query(query);
