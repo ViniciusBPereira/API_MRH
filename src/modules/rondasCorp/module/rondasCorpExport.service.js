@@ -145,10 +145,9 @@ export async function gerarCsvRondas({
    * Escape seguro para CSV (Excel-safe)
    */
   const escape = (value) => {
-    if (value === null || value === undefined) return "";
-    const str = String(value);
-    return `"${str.replace(/"/g, '""')}"`;
-  };
+  if (value === null || value === undefined) return "";
+  return String(value);
+};
 
   const lines = [
     linhaPeriodo,        // Linha 1 — título
