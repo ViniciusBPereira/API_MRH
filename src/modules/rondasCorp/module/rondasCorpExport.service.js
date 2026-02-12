@@ -151,7 +151,7 @@ export async function gerarCsvRondas({
 
   const lines = [
     linhaPeriodo,        // Linha 1 — título
-    headers.join(";"),   // Linha 2 — cabeçalho
+    headers.join(","),   // Linha 2 — cabeçalho
     ...dados.map((row) =>
       headers
         .map((header) => {
@@ -163,7 +163,7 @@ export async function gerarCsvRondas({
 
           return escape(value);
         })
-        .join(";"),
+        .join(","),
     ),
   ];
 
