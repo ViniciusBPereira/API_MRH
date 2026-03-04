@@ -9,6 +9,7 @@ export async function sincronizarRondasCorp() {
   console.log("[SERVICE][RONDAS] Iniciando sincronização completa...");
 
   try {
+
     /**
      * 1️⃣ Busca TODAS as rondas no banco corporativo
      */
@@ -19,30 +20,22 @@ export async function sincronizarRondasCorp() {
     const queryTime = ((Date.now() - queryStart) / 1000).toFixed(2);
 
     console.log(
-      `[SERVICE][RONDAS] Query finalizada em ${queryTime}s | ${rondas.length} registros encontrados`,
+      `[SERVICE][RONDAS] Query finalizada em ${queryTime}s | ${rondas.length} registros encontrados`
     );
-
-    let inseridos = 0;
-    let atualizados = 0;
 
     /**
-     * 2️⃣ Insert / Update (UPSERT manual)
+     * 2️⃣ UPSERT em lote no banco local
      */
-    for (const ronda of rondas) {
-      const existe = await repo.existsByTarefaNumero(ronda.tarefa_numero);
+    const upsertStart = Date.now();
 
-      if (!existe) {
-        await repo.insertRonda(ronda);
-        inseridos++;
-      } else {
-        await repo.updateByTarefaNumero(ronda.tarefa_numero, ronda);
-        atualizados++;
-      }
-    }
+    await repo.upsertRondasBatch(rondas);
+
+    const upsertTime = ((Date.now() - upsertStart) / 1000).toFixed(2);
 
     console.log(
-      `[SERVICE][RONDAS] Sincronização concluída: +${inseridos} inseridos, ${atualizados} atualizados`,
+      `[SERVICE][RONDAS] Sincronização concluída | ${rondas.length} registros processados em ${upsertTime}s`
     );
+
   } catch (error) {
     console.error("[SERVICE][RONDAS] ERRO NA SINCRONIZAÇÃO");
     console.error(error);
