@@ -54,41 +54,47 @@ export async function buscarRondasCorp() {
  */
 export async function upsertRondasBatch(rondas) {
 
-  if (!rondas.length) return;
+  if (!rondas || rondas.length === 0) return;
 
-  const columns = Object.keys(rondas[0]);
+  const CHUNK_SIZE = 1000;
 
-  const values = [];
-  const rowsSql = rondas
-    .map((ronda, i) => {
+  for (let i = 0; i < rondas.length; i += CHUNK_SIZE) {
 
-      const baseIndex = i * columns.length;
+    const chunk = rondas.slice(i, i + CHUNK_SIZE);
 
-      columns.forEach(col => {
-        values.push(ronda[col]);
+    const columns = Object.keys(chunk[0]);
+
+    const values = [];
+    const placeholders = [];
+
+    chunk.forEach((row, rowIndex) => {
+
+      const rowPlaceholders = columns.map((_, colIndex) => {
+        const paramIndex = rowIndex * columns.length + colIndex + 1;
+        return `$${paramIndex}`;
       });
 
-      const placeholders = columns
-        .map((_, j) => `$${baseIndex + j + 1}`)
-        .join(",");
+      placeholders.push(`(${rowPlaceholders.join(",")})`);
 
-      return `(${placeholders})`;
-    })
-    .join(",");
+      values.push(...columns.map(col => row[col]));
+    });
 
-  const updateSet = columns
-    .filter(col => col !== "tarefa_numero")
-    .map(col => `${col} = EXCLUDED.${col}`)
-    .join(",");
+    const updateSet = columns
+      .filter(col => col !== "tarefa_numero")
+      .map(col => `${col} = EXCLUDED.${col}`)
+      .join(", ");
 
-  const query = `
-    INSERT INTO corp_rondas (${columns.join(",")})
-    VALUES ${rowsSql}
-    ON CONFLICT (tarefa_numero)
-    DO UPDATE SET
+    const query = `
+      INSERT INTO corp_rondas (${columns.join(",")})
+      VALUES ${placeholders.join(",")}
+      ON CONFLICT (tarefa_numero)
+      DO UPDATE SET
       ${updateSet},
       synced_at = now()
-  `;
+    `;
 
-  await pool.query(query, values);
+    await pool.query(query, values);
+
+  }
+
 }
