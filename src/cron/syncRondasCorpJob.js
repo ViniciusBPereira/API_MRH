@@ -1,12 +1,48 @@
-import cron from "node-cron";
 import { sincronizarRondasCorp } from "../modules/rondasCorp/module/rondasCorp.service.js";
 
-cron.schedule("*/10 * * * *", async () => {
-  console.log("[CRON] Executando sincronização RONDAS CORP...");
+/**
+ * Pequena função de pausa para evitar loop agressivo
+ */
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
-  try {
-    await sincronizarRondasCorp();
-  } catch (error) {
-    console.error("[CRON] Erro RONDAS CORP:", error.message);
+/**
+ * Worker contínuo
+ * Executa uma sincronização logo após a anterior terminar
+ */
+async function executarRondasLoop() {
+
+  while (true) {
+
+    console.log("[WORKER][RONDAS] Iniciando sincronização...");
+
+    try {
+
+      const start = Date.now();
+
+      await sincronizarRondasCorp();
+
+      const duration = ((Date.now() - start) / 1000).toFixed(2);
+
+      console.log(`[WORKER][RONDAS] Finalizado em ${duration}s`);
+
+    } catch (error) {
+
+      console.error("[WORKER][RONDAS] ERRO:", error);
+
+    }
+
+    /**
+     * Pequeno respiro para não saturar banco/API
+     */
+    await sleep(2000);
+
   }
-});
+
+}
+
+/**
+ * Inicia worker
+ */
+executarRondasLoop();
