@@ -29,10 +29,12 @@ FROM dbo.tarefa
 INNER JOIN dbo.recurso
     ON recurso.codigohash = tarefa.finalizadoporhash
 WHERE
-tarefa.estruturanivel2 LIKE '91826%'
-OR tarefa.estruturanivel2 LIKE '91962%'
-OR tarefa.estruturanivel2 LIKE '91858%'
-    AND tarefa.terminoreal >= TIMESTAMP '2026-02-03 00:00:00'
+  (
+    tarefa.estruturanivel2 LIKE '91826%' OR
+    tarefa.estruturanivel2 LIKE '91962%' OR
+    tarefa.estruturanivel2 LIKE '91858%'
+  )
+  AND tarefa.terminoreal >= TIMESTAMP '2026-02-03 00:00:00'
 ORDER BY tarefa.numero;
   `;
 
