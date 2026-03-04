@@ -13,7 +13,7 @@ import corpPool from "../../../config/corpDb.js"; // banco CORPORATIVO (VPN)
  */
 export async function buscarRondasCorp() {
   const query = `
-    SELECT
+   SELECT
     tarefa.numero AS tarefa_numero,
     LEFT(tarefa.estruturanivel2, 5) AS cr,
     split_part(tarefa.estruturahierarquiadescricao, '/', 5) AS nome_departamento,
@@ -29,10 +29,11 @@ FROM dbo.tarefa
 INNER JOIN dbo.recurso
     ON recurso.codigohash = tarefa.finalizadoporhash
 WHERE
-    LEFT(tarefa.estruturanivel2, 5) IN ('91826', '91962', '91858')
-    AND tarefa.terminoreal::date >= '2026-02-03'
+tarefa.estruturanivel2 LIKE '91826%'
+OR tarefa.estruturanivel2 LIKE '91962%'
+OR tarefa.estruturanivel2 LIKE '91858%'
+    AND tarefa.terminoreal >= TIMESTAMP '2026-02-03 00:00:00'
 ORDER BY tarefa.numero;
-
   `;
 
   const result = await corpPool.query(query);
