@@ -7,10 +7,11 @@ import pool from "../../config/db.js";
  * 🔒 Camada de infraestrutura (DB)
  */
 class MrhsAgendamentoRepository {
+
   /* =====================================================
      📄 LISTAR MRHs — AGENDAMENTO
-     ✔ inclui EXAME
-     ✔ mantém filtros atuais
+     ✔ inclui observação
+     ✔ inclui checkbox manter
      ✔ filtra apenas etapa = 1
   ===================================================== */
   async getAll() {
@@ -42,18 +43,23 @@ class MrhsAgendamentoRepository {
         nome_colaborador,
         cpf_colaborador,
 
-        -- campos já existentes
+        -- campos existentes
         exame,
 
-        -- novos campos da etapa de agendamento
+        -- agendamento
         uniformes,
         data_integracao,
-        data_admissao_2 as data_admissao
+        data_admissao_2 AS data_admissao,
+
+        -- novos campos
+        observacao_agendamento,
+        COALESCE(manter_agendamento, TRUE) AS manter_agendamento
 
       FROM public.mrhs
       WHERE status_rh LIKE '%ENCERRADO%'
         AND encerrado = FALSE
-        AND etapa = 1;
+        AND etapa = 1
+        AND COALESCE(manter_agendamento, TRUE) = TRUE;
     `;
 
     try {
@@ -65,9 +71,9 @@ class MrhsAgendamentoRepository {
     }
   }
 
+
   /* =====================================================
      ✏️ ATUALIZAR EXAME PELO MRH
-     (mantido para consistência / reuso)
   ===================================================== */
   async atualizarExamePorMrh({ mrh, exame }) {
     const method = "MrhsAgendamentoRepository.atualizarExamePorMrh";
@@ -89,15 +95,18 @@ class MrhsAgendamentoRepository {
     }
   }
 
+
   /* =====================================================
      ✏️ ATUALIZAR CAMPOS DE AGENDAMENTO
-     ✔ usado no auto-save (onBlur)
+     ✔ usado no auto-save
   ===================================================== */
   async atualizarAgendamentoPorMrh({
     mrh,
     uniformes,
     data_integracao,
     data_admissao,
+    observacao,
+    manter
   }) {
     const method = "MrhsAgendamentoRepository.atualizarAgendamentoPorMrh";
 
@@ -106,12 +115,16 @@ class MrhsAgendamentoRepository {
       SET
         uniformes = $2,
         data_integracao = $3,
-        data_admissao_2 = $4
+        data_admissao_2 = $4,
+        observacao_agendamento = $5,
+        manter_agendamento = $6
       WHERE ad_id = $1
       RETURNING
         uniformes,
         data_integracao,
-        data_admissao_2 as data_admissao;
+        data_admissao_2 AS data_admissao,
+        observacao_agendamento,
+        manter_agendamento;
     `;
 
     try {
@@ -120,15 +133,52 @@ class MrhsAgendamentoRepository {
         uniformes,
         data_integracao,
         data_admissao,
+        observacao,
+        manter
       ]);
 
       if (rows.length === 0) return null;
+
       return rows[0];
+
     } catch (error) {
       console.error(`[REPOSITORY] ${method} - Erro`, error);
       throw new Error("Erro ao atualizar dados de agendamento.");
     }
   }
+
+
+  /* =====================================================
+     ✅ BOTÃO DO TOPO
+     Concluir tudo que estiver marcado
+     (manter_agendamento = TRUE)
+  ===================================================== */
+  async concluirAgendamentosMarcados() {
+
+    const method = "MrhsAgendamentoRepository.concluirAgendamentosMarcados";
+
+    const query = `
+      UPDATE public.mrhs
+      SET
+        etapa = 2
+      WHERE etapa = 1
+        AND COALESCE(manter_agendamento, TRUE) = TRUE
+      RETURNING ad_id;
+    `;
+
+    try {
+
+      const { rows } = await pool.query(query);
+      return rows;
+
+    } catch (error) {
+
+      console.error(`[REPOSITORY] ${method} - Erro`, error);
+      throw new Error("Erro ao concluir agendamentos.");
+
+    }
+  }
+
 }
 
 export default new MrhsAgendamentoRepository();
