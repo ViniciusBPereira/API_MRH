@@ -4,6 +4,7 @@ import {
   getMRHsAgendamento,
   atualizarAgendamento,
   atualizarExame,
+  concluirAgendamentosController,
 } from "./mrhsAgendamento.controller.js";
 
 const router = Router();
@@ -15,18 +16,25 @@ const router = Router();
 router.get("/", getMRHsAgendamento);
 
 /* =====================================================
+   ✅ CONCLUIR AGENDAMENTOS
+   Botão do topo da tela
+===================================================== */
+router.patch("/concluir", concluirAgendamentosController);
+
+/* =====================================================
+   ✏️ EXAME — AUTO SAVE
+===================================================== */
+router.patch("/exame/:mrh", atualizarExame);
+
+/* =====================================================
    ✏️ AGENDAMENTO — AUTO SAVE
    Campos:
    - uniformes
    - data_integracao
    - data_admissao
+   - observacao
+   - manter
 ===================================================== */
 router.patch("/:mrh", atualizarAgendamento);
-
-/* =====================================================
-   ✏️ EXAME — AUTO SAVE
-   (mantido por compatibilidade)
-===================================================== */
-router.patch("/exame/:mrh", atualizarExame);
 
 export default router;
