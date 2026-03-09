@@ -57,7 +57,7 @@ class MrhsAgendamentoRepository {
 
       FROM public.mrhs
       WHERE encerrado = FALSE
-        AND etapa = 1
+        AND etapa = 2
         AND COALESCE(manter_agendamento, TRUE) = TRUE;
     `;
 
