@@ -56,8 +56,7 @@ class MrhsAgendamentoRepository {
         COALESCE(manter_agendamento, TRUE) AS manter_agendamento
 
       FROM public.mrhs
-      WHERE status_rh LIKE '%ENCERRADO%'
-        AND encerrado = FALSE
+      WHERE encerrado = FALSE
         AND etapa = 1
         AND COALESCE(manter_agendamento, TRUE) = TRUE;
     `;
