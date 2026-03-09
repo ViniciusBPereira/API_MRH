@@ -18,47 +18,55 @@ class MrhsAgendamentoRepository {
     const method = "MrhsAgendamentoRepository.getAll";
 
     const query = `
-      SELECT 
-        data_registro,
-        data_finalizacao_rh,
-        ad_id AS mrh,
-        ad_filial,
-        desccr,
-        nome_user_abertura,
-        nome_responsavel,
-        ctt_xndire,
-        ctt_xngerr,
-        ctt_xngere,
-        ctt_xnsupe,
-        escala,
-        municipiocr,
-        bairrocr,
-        cepcr,
-        descfuncao,
-        horaentrada,
-        horasaida,
-        status_rh,
-        status_dp,
-        motivo_admissao,
-        nome_colaborador,
-        cpf_colaborador,
+     SELECT 
+  m.data_registro,
+  m.data_finalizacao_rh,
+  m.ad_id AS mrh,
+  m.ad_filial,
+  m.desccr,
+  m.nome_user_abertura,
+  m.nome_responsavel,
+  m.ctt_xndire,
+  m.ctt_xngerr,
+  m.ctt_xngere,
+  m.ctt_xnsupe,
+  m.escala,
+  m.municipiocr,
+  m.bairrocr,
+  m.cepcr,
+  m.descfuncao,
+  m.horaentrada,
+  m.horasaida,
+  m.status_rh,
+  m.status_dp,
+  m.motivo_admissao,
 
-        -- campos existentes
-        exame,
+  /* 🔥 CANDIDATO SELECIONADO */
+  COALESCE(c.nome, '-') AS nome_colaborador,
+  COALESCE(c.cpf, '-') AS cpf_colaborador,
 
-        -- agendamento
-        uniformes,
-        data_integracao,
-        data_admissao_2 AS data_admissao,
+  /* CAMPOS EXISTENTES */
+  m.exame,
 
-        -- novos campos
-        observacao_agendamento,
-        COALESCE(manter_agendamento, TRUE) AS manter_agendamento
+  /* AGENDAMENTO */
+  m.uniformes,
+  m.data_integracao,
+  m.data_admissao_2 AS data_admissao,
 
-      FROM public.mrhs
-      WHERE encerrado = FALSE
-        AND etapa = 1
-        AND COALESCE(manter_agendamento, TRUE) = TRUE;
+  /* NOVOS CAMPOS */
+  m.observacao_agendamento,
+  COALESCE(m.manter_agendamento, TRUE) AS manter_agendamento
+
+FROM public.mrhs m
+
+LEFT JOIN candidatos c
+  ON c.mrh_id = m.ad_id
+ AND c.status = 'Selecionado'
+ AND c.desistente = false
+
+WHERE m.encerrado = FALSE
+  AND m.etapa = 1
+  AND COALESCE(m.manter_agendamento, TRUE) = TRUE;
     `;
 
     try {
