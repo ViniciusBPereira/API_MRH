@@ -2,6 +2,7 @@ import {
   listarMRHsAgendamento,
   atualizarAgendamentoPorMrh,
   atualizarExamePorMrh,
+  concluirAgendamentos,
 } from "./mrhsAgendamento.service.js";
 
 /* =====================================================
@@ -16,6 +17,7 @@ export async function getMRHsAgendamento(req, res) {
     return res.status(200).json(resultado);
   } catch (error) {
     console.error(`[CONTROLLER] ${controller} - erro`, error);
+
     return res.status(500).json({
       message: "Erro ao buscar MRHs do time de agendamento.",
     });
@@ -28,19 +30,30 @@ export async function getMRHsAgendamento(req, res) {
    - uniformes
    - data_integracao
    - data_admissao
+   - observacao
+   - manter (checkbox)
 ===================================================== */
 export async function atualizarAgendamento(req, res) {
   const controller = "atualizarAgendamento";
 
   try {
     const { mrh } = req.params;
-    const { uniformes, data_integracao, data_admissao } = req.body;
+
+    const {
+      uniformes,
+      data_integracao,
+      data_admissao,
+      observacao,
+      manter,
+    } = req.body;
 
     const atualizado = await atualizarAgendamentoPorMrh({
       mrh,
       uniformes,
       data_integracao,
       data_admissao,
+      observacao,
+      manter,
     });
 
     return res.status(200).json(atualizado);
@@ -71,6 +84,7 @@ export async function atualizarExame(req, res) {
     const { exame } = req.body;
 
     const valor = await atualizarExamePorMrh({ mrh, exame });
+
     return res.status(200).json({ exame: valor });
   } catch (error) {
     console.error(`[CONTROLLER] ${controller} - erro`, error);
@@ -84,5 +98,33 @@ export async function atualizarExame(req, res) {
     return res.status(500).json({
       message: "Erro ao salvar exame.",
     });
+  }
+}
+
+/* =====================================================
+   ✅ PATCH /mrhsagendamento/concluir
+   Botão do topo da tela
+   Conclui todas as MRHs marcadas
+===================================================== */
+export async function concluirAgendamentosController(req, res) {
+  const controller = "concluirAgendamentosController";
+
+  try {
+
+    const resultado = await concluirAgendamentos();
+
+    return res.status(200).json({
+      message: "Agendamentos concluídos com sucesso.",
+      total: resultado.total,
+    });
+
+  } catch (error) {
+
+    console.error(`[CONTROLLER] ${controller} - erro`, error);
+
+    return res.status(500).json({
+      message: "Erro ao concluir agendamentos.",
+    });
+
   }
 }
