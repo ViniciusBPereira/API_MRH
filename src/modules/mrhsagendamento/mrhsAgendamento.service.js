@@ -37,7 +37,6 @@ const mapMotivoAdmissao = (valor) => {
 
 /* =====================================================
    📄 LISTAR MRHs — TIME DE AGENDAMENTO
-   ✔ apenas etapa = 1 (repository)
 ===================================================== */
 export async function listarMRHsAgendamento() {
   console.info("[SERVICE] listarMRHsAgendamento - Início");
@@ -64,18 +63,23 @@ export async function listarMRHsAgendamento() {
         dias_em_aberto: dias,
 
         mrh: capitalizeFirstLetterEachWord(item.mrh),
+
         empresa: capitalizeFirstLetterEachWord(
           mapaEmpresaCache[item.ad_filial] || "Empresa não mapeada"
         ),
+
         escala: capitalizeFirstLetterEachWord(
           mapaEscalaCache[item.escala] || "Não informado"
         ),
+
         endereco: `${capitalizeFirstLetterEachWord(
           item.municipiocr || ""
         )}, ${capitalizeFirstLetterEachWord(item.bairrocr || "")} - CEP: ${
           item.cepcr || ""
         }`,
+
         funcao: capitalizeFirstLetterEachWord(item.descfuncao),
+
         periodo: `${item.horaentrada || ""} - ${item.horasaida || ""}`,
 
         nome_colaborador: capitalizeFirstLetterEachWord(item.nome_colaborador),
@@ -83,23 +87,35 @@ export async function listarMRHsAgendamento() {
 
         status_rh: item.status_rh,
         status_dp: item.status_dp,
+
         motivo_admissao: mapMotivoAdmissao(item.motivo_admissao),
 
         cr: item.desccr?.split(" - ").slice(1).join(" - ") || "",
+
         usuario_abertura: capitalizeFirstLetterEachWord(
           item.nome_user_abertura
         ),
+
         responsavel: capitalizeFirstLetterEachWord(item.nome_responsavel),
+
         diretor: capitalizeFirstLetterEachWord(item.ctt_xndire),
         gerente_regional: capitalizeFirstLetterEachWord(item.ctt_xngerr),
         gerente: capitalizeFirstLetterEachWord(item.ctt_xngere),
         supervisor: capitalizeFirstLetterEachWord(item.ctt_xnsupe),
 
-        // ===== CAMPOS DO AGENDAMENTO =====
+        /* ===== CAMPOS DO AGENDAMENTO ===== */
+
         exame: item.exame ?? "",
+
         uniformes: item.uniformes ?? "",
+
         data_integracao: item.data_integracao ?? "",
+
         data_admissao: item.data_admissao ?? "",
+
+        observacao: item.observacao_agendamento ?? "",
+
+        manter: item.manter_agendamento ?? true,
       };
     })
     .sort(
@@ -110,13 +126,15 @@ export async function listarMRHsAgendamento() {
 }
 
 /* =====================================================
-   ✏️ ATUALIZAR CAMPOS DE AGENDAMENTO (AUTO-SAVE)
+   ✏️ ATUALIZAR CAMPOS DE AGENDAMENTO (AUTO SAVE)
 ===================================================== */
 export async function atualizarAgendamentoPorMrh({
   mrh,
   uniformes,
   data_integracao,
   data_admissao,
+  observacao,
+  manter,
 }) {
   console.info("[SERVICE] atualizarAgendamentoPorMrh", { mrh });
 
@@ -129,10 +147,12 @@ export async function atualizarAgendamentoPorMrh({
     uniformes: uniformes?.trim() || null,
     data_integracao: data_integracao?.trim() || null,
     data_admissao: data_admissao?.trim() || null,
+    observacao: observacao?.trim() || null,
+    manter: manter ?? true,
   });
 
   if (!atualizado) {
-    const err = new Error("MRH não localizado no sistema.");
+    const err = new Error("MRH não localizada no sistema.");
     err.code = "MRH_NAO_LOCALIZADO";
     throw err;
   }
@@ -141,7 +161,7 @@ export async function atualizarAgendamentoPorMrh({
 }
 
 /* =====================================================
-   ✏️ ATUALIZAR EXAME (mantido por compatibilidade)
+   ✏️ ATUALIZAR EXAME
 ===================================================== */
 export async function atualizarExamePorMrh({ mrh, exame }) {
   console.info("[SERVICE] atualizarExamePorMrh", { mrh });
@@ -156,10 +176,26 @@ export async function atualizarExamePorMrh({ mrh, exame }) {
   });
 
   if (!atualizado) {
-    const err = new Error("MRH não localizado no sistema.");
+    const err = new Error("MRH não localizada no sistema.");
     err.code = "MRH_NAO_LOCALIZADO";
     throw err;
   }
 
   return valor;
+}
+
+/* =====================================================
+   ✅ BOTÃO DO TOPO
+   Concluir todas marcadas
+===================================================== */
+export async function concluirAgendamentos() {
+
+  console.info("[SERVICE] concluirAgendamentos");
+
+  const resultado = await repo.concluirAgendamentosMarcados();
+
+  return {
+    total: resultado.length
+  };
+
 }
