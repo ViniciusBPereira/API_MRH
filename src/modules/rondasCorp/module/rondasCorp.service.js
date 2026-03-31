@@ -1,40 +1,69 @@
+import pool from "../../../config/db.js";
 import * as repo from "./rondasCorp.repository.js";
 
 /**
- * Sincroniza TODAS as rondas do banco corporativo para o banco local
- * Executado via cron
- * ⚠️ SEM controle incremental
+ * Busca última data processada
+ */
+async function obterUltimaData() {
+  const result = await pool.query(
+    "SELECT ultima_data FROM sync_controle WHERE processo = 'rondas'"
+  );
+
+  return result.rows[0]?.ultima_data || '2026-02-03 00:00:00';
+}
+
+/**
+ * Salva progresso
+ */
+async function salvarUltimaData(data) {
+  await pool.query(`
+    INSERT INTO sync_controle (processo, ultima_data)
+    VALUES ('rondas', $1)
+    ON CONFLICT (processo)
+    DO UPDATE SET ultima_data = $1
+  `, [data]);
+}
+
+/**
+ * Sincronização incremental REAL
  */
 export async function sincronizarRondasCorp() {
-  console.log("[SERVICE][RONDAS] Iniciando sincronização completa...");
+
+  console.log("[SERVICE][RONDAS] Sync incremental iniciado");
 
   try {
 
-    /**
-     * 1️⃣ Busca TODAS as rondas no banco corporativo
-     */
-    console.log("[SERVICE][RONDAS] Buscando dados no banco corporativo...");
+    let ultimaData = await obterUltimaData();
 
-    const queryStart = Date.now();
-    const rondas = await repo.buscarRondasCorp();
-    const queryTime = ((Date.now() - queryStart) / 1000).toFixed(2);
+    while (true) {
 
-    console.log(
-      `[SERVICE][RONDAS] Query finalizada em ${queryTime}s | ${rondas.length} registros encontrados`
-    );
+      const queryStart = Date.now();
 
-    /**
-     * 2️⃣ UPSERT em lote no banco local
-     */
-    const upsertStart = Date.now();
+      const rondas = await repo.buscarRondasCorp(ultimaData);
 
-    await repo.upsertRondasBatch(rondas);
+      const queryTime = ((Date.now() - queryStart) / 1000).toFixed(2);
 
-    const upsertTime = ((Date.now() - upsertStart) / 1000).toFixed(2);
+      console.log(
+        `[SERVICE][RONDAS] Query ${queryTime}s | ${rondas.length} registros`
+      );
 
-    console.log(
-      `[SERVICE][RONDAS] Sincronização concluída | ${rondas.length} registros processados em ${upsertTime}s`
-    );
+      if (rondas.length === 0) {
+        console.log("[SERVICE][RONDAS] Sem novos dados");
+        break;
+      }
+
+      await repo.upsertRondasBatch(rondas);
+
+      /**
+       * Atualiza cursor (último registro processado)
+       */
+      ultimaData = rondas[rondas.length - 1].hora_chegada;
+
+      await salvarUltimaData(ultimaData);
+
+      console.log(`[SERVICE][RONDAS] Processados ${rondas.length}`);
+
+    }
 
   } catch (error) {
     console.error("[SERVICE][RONDAS] ERRO NA SINCRONIZAÇÃO");
