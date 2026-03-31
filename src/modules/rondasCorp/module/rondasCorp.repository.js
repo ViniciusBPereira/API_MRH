@@ -3,10 +3,10 @@ import corpPool from "../../../config/corpDb.js"; // banco CORPORATIVO (VPN)
 
 /**
  * ============================
- * BANCO CORPORATIVO (INCREMENTAL + ESTÁVEL)
+ * BANCO CORPORATIVO (DIÁRIO)
  * ============================
  */
-export async function buscarRondasCorp(ultimaData) {
+export async function buscarRondasCorp() {
 
   const query = `
     SELECT
@@ -24,22 +24,24 @@ export async function buscarRondasCorp(ultimaData) {
     FROM dbo.tarefa
     INNER JOIN dbo.recurso
       ON recurso.codigohash = tarefa.finalizadoporhash
-    WHERE LEFT(tarefa.estruturanivel2, 5) IN ('91826','91962','91858')
+    WHERE 
+      LEFT(tarefa.estruturanivel2, 5) IN ('91826','91962','91858')
       AND tarefa.terminoreal IS NOT NULL
-      AND tarefa.terminoreal > $1
 
-      -- 🔥 evita concorrência com processamento
-      AND tarefa.terminoreal < NOW() - INTERVAL '1 day'
+      -- 🔥 pega tudo de HOJE
+      AND tarefa.terminoreal >= DATE_TRUNC('day', NOW())
+
+      -- 🔥 evita pegar registro ainda em processamento
+      AND tarefa.terminoreal < NOW() - INTERVAL '2 minutes'
 
     ORDER BY tarefa.terminoreal, tarefa.numero
-    LIMIT 100
   `;
 
   try {
 
     const start = Date.now();
 
-    const result = await corpPool.query(query, [ultimaData]);
+    const result = await corpPool.query(query);
 
     const duration = Date.now() - start;
 
@@ -51,14 +53,14 @@ export async function buscarRondasCorp(ultimaData) {
 
     console.warn("⚠️ Erro na query corp (1ª tentativa):", err.message);
 
-    // 🔁 retry controlado
+    // 🔁 retry
     await new Promise(r => setTimeout(r, 3000));
 
     try {
 
       const start = Date.now();
 
-      const result = await corpPool.query(query, [ultimaData]);
+      const result = await corpPool.query(query);
 
       const duration = Date.now() - start;
 
@@ -69,7 +71,7 @@ export async function buscarRondasCorp(ultimaData) {
     } catch (err2) {
 
       console.error("❌ Falha após retry:", err2.message);
-      return []; // evita quebrar o fluxo
+      return [];
 
     }
   }
@@ -84,7 +86,7 @@ export async function upsertRondasBatch(rondas) {
 
   if (!rondas || rondas.length === 0) return;
 
-  const CHUNK_SIZE = 200; // 🔥 reduz pressão no banco local
+  const CHUNK_SIZE = 200;
 
   for (let i = 0; i < rondas.length; i += CHUNK_SIZE) {
 
