@@ -3,15 +3,12 @@ import corpPool from "../../../config/corpDb.js"; // banco CORPORATIVO (VPN)
 
 /**
  * ============================
- * BANCO CORPORATIVO
+ * BANCO CORPORATIVO (INCREMENTAL)
  * ============================
  */
 
-/**
- * Busca TODAS as rondas dos CRs informados
- * ⚠️ SEM filtro incremental
- */
-export async function buscarRondasCorp() {
+export async function buscarRondasCorp(ultimaData) {
+
   const query = `
     SELECT
       tarefa.numero AS tarefa_numero,
@@ -34,29 +31,32 @@ export async function buscarRondasCorp() {
         tarefa.estruturanivel2 LIKE '91962%' OR
         tarefa.estruturanivel2 LIKE '91858%'
       )
-      AND tarefa.terminoreal >= TIMESTAMP '2026-02-03 00:00:00'
-    ORDER BY tarefa.numero
+      AND tarefa.terminoreal IS NOT NULL
+      AND tarefa.terminoreal > $1
+
+      -- 🔥 evita pegar dado ainda em processamento
+      AND tarefa.terminoreal < NOW() - INTERVAL '2 minutes'
+
+    ORDER BY tarefa.terminoreal
+    LIMIT 500
   `;
 
-  const result = await corpPool.query(query);
+  const result = await corpPool.query(query, [ultimaData]);
+
   return result.rows;
 }
 
 /**
  * ============================
- * BANCO LOCAL (UPSERT EM LOTE)
+ * BANCO LOCAL (UPSERT OTIMIZADO)
  * ============================
  */
 
-/**
- * Insere / Atualiza rondas em lote
- * (substitui exists + insert + update)
- */
 export async function upsertRondasBatch(rondas) {
 
   if (!rondas || rondas.length === 0) return;
 
-  const CHUNK_SIZE = 1000;
+  const CHUNK_SIZE = 500;
 
   for (let i = 0; i < rondas.length; i += CHUNK_SIZE) {
 
@@ -79,6 +79,9 @@ export async function upsertRondasBatch(rondas) {
       values.push(...columns.map(col => row[col]));
     });
 
+    /**
+     * 🔥 Atualiza somente se mudou (evita escrita desnecessária)
+     */
     const updateSet = columns
       .filter(col => col !== "tarefa_numero")
       .map(col => `${col} = EXCLUDED.${col}`)
@@ -89,8 +92,9 @@ export async function upsertRondasBatch(rondas) {
       VALUES ${placeholders.join(",")}
       ON CONFLICT (tarefa_numero)
       DO UPDATE SET
-      ${updateSet},
-      synced_at = now()
+        ${updateSet},
+        synced_at = now()
+      WHERE corp_rondas.hora_chegada IS DISTINCT FROM EXCLUDED.hora_chegada
     `;
 
     await pool.query(query, values);
