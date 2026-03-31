@@ -13,9 +13,11 @@ const corpPool = new Pool({
 
   max: 3, // 🔥 reduz pressão na VPN
 
-  connectionTimeoutMillis: 60000, // 🔥 60s
-  statement_timeout: 120000,      // 🔥 2 min
-  query_timeout: 120000,
+ // 🔥 TIMEOUTS AJUSTADOS
+  connectionTimeoutMillis: 300000, // 5 minutos
+  statement_timeout: 300000,       // 5 minutos
+  query_timeout: 300000,           // 5 minutos
+
 
   idleTimeoutMillis: 30000,
 });
