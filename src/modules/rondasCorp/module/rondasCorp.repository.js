@@ -3,10 +3,9 @@ import corpPool from "../../../config/corpDb.js"; // banco CORPORATIVO (VPN)
 
 /**
  * ============================
- * BANCO CORPORATIVO (INCREMENTAL)
+ * BANCO CORPORATIVO (INCREMENTAL + ESTÁVEL)
  * ============================
  */
-
 export async function buscarRondasCorp(ultimaData) {
 
   const query = `
@@ -29,16 +28,51 @@ export async function buscarRondasCorp(ultimaData) {
       AND tarefa.terminoreal IS NOT NULL
       AND tarefa.terminoreal > $1
 
-      -- 🔥 evita pegar dado ainda em processamento
-      AND tarefa.terminoreal < NOW() - INTERVAL '2 minutes'
+      -- 🔥 evita concorrência com processamento
+      AND tarefa.terminoreal < NOW() - INTERVAL '1 minute'
 
-    ORDER BY tarefa.terminoreal
-    LIMIT 500
+    ORDER BY tarefa.terminoreal, tarefa.numero
+    LIMIT 100
   `;
 
-  const result = await corpPool.query(query, [ultimaData]);
+  try {
 
-  return result.rows;
+    const start = Date.now();
+
+    const result = await corpPool.query(query, [ultimaData]);
+
+    const duration = Date.now() - start;
+
+    console.log(`⏱ QUERY CORP: ${duration}ms | ${result.rowCount} registros`);
+
+    return result.rows;
+
+  } catch (err) {
+
+    console.warn("⚠️ Erro na query corp (1ª tentativa):", err.message);
+
+    // 🔁 retry controlado
+    await new Promise(r => setTimeout(r, 3000));
+
+    try {
+
+      const start = Date.now();
+
+      const result = await corpPool.query(query, [ultimaData]);
+
+      const duration = Date.now() - start;
+
+      console.log(`⏱ QUERY CORP (retry): ${duration}ms | ${result.rowCount} registros`);
+
+      return result.rows;
+
+    } catch (err2) {
+
+      console.error("❌ Falha após retry:", err2.message);
+      return []; // evita quebrar o fluxo
+
+    }
+  }
 }
 
 /**
@@ -46,12 +80,11 @@ export async function buscarRondasCorp(ultimaData) {
  * BANCO LOCAL (UPSERT OTIMIZADO)
  * ============================
  */
-
 export async function upsertRondasBatch(rondas) {
 
   if (!rondas || rondas.length === 0) return;
 
-  const CHUNK_SIZE = 500;
+  const CHUNK_SIZE = 200; // 🔥 reduz pressão no banco local
 
   for (let i = 0; i < rondas.length; i += CHUNK_SIZE) {
 
@@ -74,9 +107,6 @@ export async function upsertRondasBatch(rondas) {
       values.push(...columns.map(col => row[col]));
     });
 
-    /**
-     * 🔥 Atualiza somente se mudou (evita escrita desnecessária)
-     */
     const updateSet = columns
       .filter(col => col !== "tarefa_numero")
       .map(col => `${col} = EXCLUDED.${col}`)
@@ -92,8 +122,10 @@ export async function upsertRondasBatch(rondas) {
       WHERE corp_rondas.hora_chegada IS DISTINCT FROM EXCLUDED.hora_chegada
     `;
 
-    await pool.query(query, values);
-
+    try {
+      await pool.query(query, values);
+    } catch (err) {
+      console.error("❌ Erro no upsert batch:", err.message);
+    }
   }
-
 }
