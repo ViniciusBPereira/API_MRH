@@ -3,11 +3,15 @@ import corpPool from "../../../config/corpDb.js"; // banco CORPORATIVO (VPN)
 
 /**
  * ============================
- * BANCO CORPORATIVO (DIÁRIO)
+ * BANCO CORPORATIVO
  * ============================
  */
-export async function buscarRondasCorp() {
 
+/**
+ * Busca TODAS as rondas dos CRs informados
+ * ⚠️ SEM filtro incremental
+ */
+export async function buscarRondasCorp() {
   const query = `
     SELECT
       tarefa.numero AS tarefa_numero,
@@ -24,72 +28,32 @@ export async function buscarRondasCorp() {
     FROM dbo.tarefa
     INNER JOIN dbo.recurso
       ON recurso.codigohash = tarefa.finalizadoporhash
-    WHERE 
-      LEFT(tarefa.estruturanivel2, 5) IN ('91826','91962','91858')
-      AND tarefa.terminoreal IS NOT NULL
-
-      -- 🔥 pega tudo de HOJE
-      AND tarefa.terminoreal >= DATE_TRUNC('day', NOW())
-
-      -- 🔥 evita pegar registro ainda em processamento
-      AND tarefa.terminoreal < NOW() - INTERVAL '2 minutes'
-
-    ORDER BY tarefa.terminoreal, tarefa.numero
+    WHERE
+      (
+        tarefa.estruturanivel2 LIKE '91826%' OR
+        tarefa.estruturanivel2 LIKE '91962%' OR
+        tarefa.estruturanivel2 LIKE '91858%'
+      )
+      AND tarefa.terminoreal >= TIMESTAMP '2026-02-03 00:00:00'
+    ORDER BY tarefa.numero
   `;
 
-  try {
-
-    const start = Date.now();
-
-    const result = await corpPool.query(query);
-
-    const duration = Date.now() - start;
-
-    console.log(`⏱ QUERY CORP: ${duration}ms | ${result.rowCount} registros`);
-
-    return result.rows;
-
-  } catch (err) {
-
-    console.warn("⚠️ Erro na query corp (1ª tentativa):", err.message);
-
-    // 🔁 retry
-    await new Promise(r => setTimeout(r, 3000));
-
-    try {
-
-      const start = Date.now();
-
-      const result = await corpPool.query(query);
-
-      const duration = Date.now() - start;
-
-      console.log(`⏱ QUERY CORP (retry): ${duration}ms | ${result.rowCount} registros`);
-
-      return result.rows;
-
-    } catch (err2) {
-
-      console.error("❌ Falha após retry:", err2.message);
-      return [];
-
-    }
-  }
+  const result = await corpPool.query(query);
+  return result.rows;
 }
 
 /**
  * ============================
- * BANCO LOCAL (UPSERT OTIMIZADO)
+ * BANCO LOCAL (UPSERT EM LOTE)
  * ============================
  */
-export async function upsertRondasBatch(rondas) {
 
+export async function upsertRondasBatch(rondas) {
   if (!rondas || rondas.length === 0) return;
 
-  const CHUNK_SIZE = 200;
+  const CHUNK_SIZE = 1000;
 
   for (let i = 0; i < rondas.length; i += CHUNK_SIZE) {
-
     const chunk = rondas.slice(i, i + CHUNK_SIZE);
 
     const columns = Object.keys(chunk[0]);
@@ -98,20 +62,18 @@ export async function upsertRondasBatch(rondas) {
     const placeholders = [];
 
     chunk.forEach((row, rowIndex) => {
-
       const rowPlaceholders = columns.map((_, colIndex) => {
         const paramIndex = rowIndex * columns.length + colIndex + 1;
         return `$${paramIndex}`;
       });
 
       placeholders.push(`(${rowPlaceholders.join(",")})`);
-
-      values.push(...columns.map(col => row[col]));
+      values.push(...columns.map((col) => row[col]));
     });
 
     const updateSet = columns
-      .filter(col => col !== "tarefa_numero")
-      .map(col => `${col} = EXCLUDED.${col}`)
+      .filter((col) => col !== "tarefa_numero")
+      .map((col) => `${col} = EXCLUDED.${col}`)
       .join(", ");
 
     const query = `
@@ -121,13 +83,8 @@ export async function upsertRondasBatch(rondas) {
       DO UPDATE SET
         ${updateSet},
         synced_at = now()
-      WHERE corp_rondas.hora_chegada IS DISTINCT FROM EXCLUDED.hora_chegada
     `;
 
-    try {
-      await pool.query(query, values);
-    } catch (err) {
-      console.error("❌ Erro no upsert batch:", err.message);
-    }
+    await pool.query(query, values);
   }
 }
