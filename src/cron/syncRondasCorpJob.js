@@ -1,14 +1,9 @@
 import { sincronizarRondasCorp } from "../modules/rondasCorp/module/rondasCorp.service.js";
 
 /**
- * Intervalo de execução (quase tempo real)
+ * Intervalo fixo de 5 minutos
  */
-const INTERVALO = 60 * 1000; // 1 minuto
-
-/**
- * Controle de concorrência
- */
-let emExecucao = false;
+const INTERVALO = 5 * 60 * 1000; // 300000 ms
 
 /**
  * Sleep utilitário
@@ -18,31 +13,17 @@ function sleep(ms) {
 }
 
 /**
- * Worker contínuo controlado
+ * Worker contínuo controlado por tempo fixo
  */
 async function executarRondasLoop() {
-
-  console.log("[WORKER][RONDAS] Worker iniciado (intervalo: 1 minuto)");
+  console.log("[WORKER][RONDAS] Worker iniciado (intervalo: 5 minutos)");
 
   while (true) {
-
-    /**
-     * Evita execução concorrente
-     */
-    if (emExecucao) {
-      console.warn("[WORKER][RONDAS] Execução ainda em andamento, aguardando...");
-      await sleep(5000); // espera 5s e tenta de novo
-      continue;
-    }
-
-    emExecucao = true;
-
     console.log("[WORKER][RONDAS] Iniciando sincronização...");
 
     const inicioCiclo = Date.now();
 
     try {
-
       const start = Date.now();
 
       await sincronizarRondasCorp();
@@ -50,17 +31,12 @@ async function executarRondasLoop() {
       const duration = ((Date.now() - start) / 1000).toFixed(2);
 
       console.log(`[WORKER][RONDAS] Finalizado em ${duration}s`);
-
     } catch (error) {
-
       console.error("[WORKER][RONDAS] ERRO:", error);
-
-    } finally {
-      emExecucao = false;
     }
 
     /**
-     * Garante intervalo fixo real
+     * Garante intervalo fixo entre execuções
      */
     const tempoExecucao = Date.now() - inicioCiclo;
     const tempoRestante = INTERVALO - tempoExecucao;
@@ -72,12 +48,10 @@ async function executarRondasLoop() {
       await sleep(tempoRestante);
     } else {
       console.warn(
-        "[WORKER][RONDAS] Execução demorou mais que o intervalo, reiniciando imediatamente\n"
+        "[WORKER][RONDAS] Execução demorou mais que 5 minutos, iniciando próximo ciclo imediatamente\n"
       );
     }
-
   }
-
 }
 
 /**
