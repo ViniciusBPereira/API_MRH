@@ -29,7 +29,7 @@ export async function buscarRondasCorp(ultimaData) {
       AND tarefa.terminoreal > $1
 
       -- 🔥 evita concorrência com processamento
-      AND tarefa.terminoreal < NOW() - INTERVAL '1 minute'
+      AND tarefa.terminoreal < NOW() - INTERVAL '1 day'
 
     ORDER BY tarefa.terminoreal, tarefa.numero
     LIMIT 100
