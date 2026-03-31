@@ -9,13 +9,10 @@ const corpPool = new Pool({
   user: env.CORP_DB_USER,
   password: env.CORP_DB_PASS,
   database: env.CORP_DB_NAME,
-  ssl: false,
-
-  max: 2, // 🔥 evita sobrecarregar VPN
+  ssl: false, // via VPN
+  max: 10, // pool controlado
   idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 1200000, // 🔥 tempo pra conectar (10s)
-
-  keepAlive: true, // 🔥 essencial pra VPN
+  connectionTimeoutMillis: 5000,
 });
 
 export default corpPool;
