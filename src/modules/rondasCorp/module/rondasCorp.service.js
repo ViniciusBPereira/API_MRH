@@ -1,47 +1,42 @@
 import * as repo from "./rondasCorp.repository.js";
 
 /**
- * Sincronização diária (reprocessa o dia inteiro)
+ * Sincroniza TODAS as rondas do banco corporativo para o banco local
+ * ⚠️ SEM controle incremental
  */
 export async function sincronizarRondasCorp() {
-
-  console.log("[SERVICE][RONDAS] Sync diário iniciado");
+  console.log("[SERVICE][RONDAS] Iniciando sincronização completa...");
 
   try {
+    /**
+     * 1️⃣ Buscar dados
+     */
+    console.log("[SERVICE][RONDAS] Buscando dados no banco corporativo...");
 
-    const inicio = Date.now();
+    const queryStart = Date.now();
 
-    let rondas = [];
+    const rondas = await repo.buscarRondasCorp();
 
-    try {
-      rondas = await repo.buscarRondasCorp();
-    } catch (err) {
-      console.error("❌ Erro ao buscar rondas:", err.message);
-      return;
-    }
-
-    const duracao = ((Date.now() - inicio) / 1000).toFixed(2);
+    const queryTime = ((Date.now() - queryStart) / 1000).toFixed(2);
 
     console.log(
-      `[SERVICE][RONDAS] Query ${duracao}s | ${rondas.length} registros`
+      `[SERVICE][RONDAS] Query finalizada em ${queryTime}s | ${rondas.length} registros encontrados`
     );
 
-    if (!rondas || rondas.length === 0) {
-      console.log("[SERVICE][RONDAS] Sem dados para processar");
-      return;
-    }
+    /**
+     * 2️⃣ UPSERT
+     */
+    const upsertStart = Date.now();
 
-    try {
-      await repo.upsertRondasBatch(rondas);
-    } catch (err) {
-      console.error("❌ Erro no upsert:", err.message);
-      return;
-    }
+    await repo.upsertRondasBatch(rondas);
 
-    console.log(`[SERVICE][RONDAS] Processados ${rondas.length}`);
+    const upsertTime = ((Date.now() - upsertStart) / 1000).toFixed(2);
 
+    console.log(
+      `[SERVICE][RONDAS] Sincronização concluída | ${rondas.length} registros processados em ${upsertTime}s`
+    );
   } catch (error) {
     console.error("[SERVICE][RONDAS] ERRO NA SINCRONIZAÇÃO");
-    console.error(error.message);
+    console.error(error);
   }
 }
