@@ -2,14 +2,33 @@ import pool from "../../../config/db.js";
 import * as repo from "./rondasCorp.repository.js";
 
 /**
+ * Garante que a tabela existe
+ */
+async function garantirTabela() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS sync_controle (
+      processo TEXT PRIMARY KEY,
+      ultima_data TIMESTAMP NOT NULL
+    );
+  `);
+}
+
+/**
  * Busca última data processada
  */
 async function obterUltimaData() {
-  const result = await pool.query(
-    "SELECT ultima_data FROM sync_controle WHERE processo = 'rondas'"
-  );
+  try {
+    const result = await pool.query(
+      "SELECT ultima_data FROM sync_controle WHERE processo = 'rondas'"
+    );
 
-  return result.rows[0]?.ultima_data || '2026-02-03 00:00:00';
+    return result.rows[0]?.ultima_data || '2026-02-03 00:00:00';
+
+  } catch (err) {
+    console.warn("⚠️ sync_controle não existe, criando...");
+    await garantirTabela();
+    return '2026-02-03 00:00:00';
+  }
 }
 
 /**
@@ -33,9 +52,14 @@ export async function sincronizarRondasCorp() {
 
   try {
 
+    await garantirTabela();
+
     let ultimaData = await obterUltimaData();
 
-    while (true) {
+    let loops = 0;
+    const MAX_LOOPS = 10; // 🔥 evita loop infinito
+
+    while (loops < MAX_LOOPS) {
 
       const queryStart = Date.now();
 
@@ -54,19 +78,17 @@ export async function sincronizarRondasCorp() {
 
       await repo.upsertRondasBatch(rondas);
 
-      /**
-       * Atualiza cursor (último registro processado)
-       */
       ultimaData = rondas[rondas.length - 1].hora_chegada;
 
       await salvarUltimaData(ultimaData);
 
       console.log(`[SERVICE][RONDAS] Processados ${rondas.length}`);
 
+      loops++;
     }
 
   } catch (error) {
     console.error("[SERVICE][RONDAS] ERRO NA SINCRONIZAÇÃO");
-    console.error(error);
+    console.error(error.message);
   }
 }
