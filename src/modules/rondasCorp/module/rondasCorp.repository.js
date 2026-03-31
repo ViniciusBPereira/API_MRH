@@ -25,12 +25,7 @@ export async function buscarRondasCorp(ultimaData) {
     FROM dbo.tarefa
     INNER JOIN dbo.recurso
       ON recurso.codigohash = tarefa.finalizadoporhash
-    WHERE
-      (
-        tarefa.estruturanivel2 LIKE '91826%' OR
-        tarefa.estruturanivel2 LIKE '91962%' OR
-        tarefa.estruturanivel2 LIKE '91858%'
-      )
+    WHERE LEFT(tarefa.estruturanivel2, 5) IN ('91826','91962','91858')
       AND tarefa.terminoreal IS NOT NULL
       AND tarefa.terminoreal > $1
 
