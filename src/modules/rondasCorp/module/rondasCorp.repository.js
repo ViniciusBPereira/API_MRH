@@ -48,12 +48,18 @@ export async function buscarRondasCorp() {
  * ============================
  */
 
+/**
+ * Insere / Atualiza rondas em lote
+ * (substitui exists + insert + update)
+ */
 export async function upsertRondasBatch(rondas) {
+
   if (!rondas || rondas.length === 0) return;
 
   const CHUNK_SIZE = 1000;
 
   for (let i = 0; i < rondas.length; i += CHUNK_SIZE) {
+
     const chunk = rondas.slice(i, i + CHUNK_SIZE);
 
     const columns = Object.keys(chunk[0]);
@@ -62,18 +68,20 @@ export async function upsertRondasBatch(rondas) {
     const placeholders = [];
 
     chunk.forEach((row, rowIndex) => {
+
       const rowPlaceholders = columns.map((_, colIndex) => {
         const paramIndex = rowIndex * columns.length + colIndex + 1;
         return `$${paramIndex}`;
       });
 
       placeholders.push(`(${rowPlaceholders.join(",")})`);
-      values.push(...columns.map((col) => row[col]));
+
+      values.push(...columns.map(col => row[col]));
     });
 
     const updateSet = columns
-      .filter((col) => col !== "tarefa_numero")
-      .map((col) => `${col} = EXCLUDED.${col}`)
+      .filter(col => col !== "tarefa_numero")
+      .map(col => `${col} = EXCLUDED.${col}`)
       .join(", ");
 
     const query = `
@@ -81,10 +89,12 @@ export async function upsertRondasBatch(rondas) {
       VALUES ${placeholders.join(",")}
       ON CONFLICT (tarefa_numero)
       DO UPDATE SET
-        ${updateSet},
-        synced_at = now()
+      ${updateSet},
+      synced_at = now()
     `;
 
     await pool.query(query, values);
+
   }
+
 }
