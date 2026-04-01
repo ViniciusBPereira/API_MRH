@@ -3,7 +3,7 @@ import { sincronizarRondasCorp } from "../modules/rondasCorp/module/rondasCorp.s
 /**
  * Intervalo fixo de 5 minutos
  */
-const INTERVALO = 5 * 60 * 1000; // 300000 ms
+const INTERVALO = 10 * 60 * 1000; // 300000 ms
 
 /**
  * Sleep utilitário
@@ -16,14 +16,17 @@ function sleep(ms) {
  * Worker contínuo controlado por tempo fixo
  */
 async function executarRondasLoop() {
+
   console.log("[WORKER][RONDAS] Worker iniciado (intervalo: 5 minutos)");
 
   while (true) {
+
     console.log("[WORKER][RONDAS] Iniciando sincronização...");
 
     const inicioCiclo = Date.now();
 
     try {
+
       const start = Date.now();
 
       await sincronizarRondasCorp();
@@ -31,12 +34,16 @@ async function executarRondasLoop() {
       const duration = ((Date.now() - start) / 1000).toFixed(2);
 
       console.log(`[WORKER][RONDAS] Finalizado em ${duration}s`);
+
     } catch (error) {
+
       console.error("[WORKER][RONDAS] ERRO:", error);
+
     }
 
     /**
-     * Garante intervalo fixo entre execuções
+     * Garante que sempre espere 5 minutos entre execuções
+     * (descontando o tempo que já levou pra executar)
      */
     const tempoExecucao = Date.now() - inicioCiclo;
     const tempoRestante = INTERVALO - tempoExecucao;
@@ -51,10 +58,12 @@ async function executarRondasLoop() {
         "[WORKER][RONDAS] Execução demorou mais que 5 minutos, iniciando próximo ciclo imediatamente\n"
       );
     }
+
   }
+
 }
 
 /**
  * Inicializa worker
  */
-executarRondasLoop();
+executarRondasLoop();;
