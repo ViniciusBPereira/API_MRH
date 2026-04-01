@@ -12,7 +12,7 @@ const corpPool = new Pool({
   ssl: false, // via VPN
   max: 10, // pool controlado
   idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 5000,
+  connectionTimeoutMillis: 0,
 });
 
 export default corpPool;
