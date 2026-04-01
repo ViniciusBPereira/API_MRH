@@ -3,7 +3,7 @@ import { sincronizarRondasCorp } from "../modules/rondasCorp/module/rondasCorp.s
 /**
  * Intervalo fixo de 5 minutos
  */
-const INTERVALO = 1 * 60 * 1000; // 300000 ms
+const INTERVALO = 2 * 60 * 1000; // 300000 ms
 
 /**
  * Sleep utilitário
