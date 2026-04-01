@@ -13,7 +13,7 @@ const corpPool = new Pool({
   max: 10, // pool controlado
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 0,
-  statement_timeout: 0, // sem timeout de query
+  statement_timeout: 0 // sem timeout de query
 });
 
 export default corpPool;
