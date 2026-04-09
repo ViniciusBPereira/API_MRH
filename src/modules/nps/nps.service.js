@@ -5,7 +5,7 @@ const BASE_URL = "https://ws.gps360.com.br/aplicacaoPesquisas";
 
 const TOKEN =
   process.env.GPS360_TOKEN ||
-  "SEU_TOKEN_AQUI";
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE3NzU3NTA4MjQsImV4cCI6MTc3NTgzNzIyNCwic3ViIjoiMjNjZTI1NjYtZDg5YS00M2VkLTlhM2YtMTExNTA4NTJmODdmOkdQUzpBbmFsaXN0YTpnYWJyaWVsbGkuc2lsdmFAZ3Bzc2EuY29tLmJyIn0.YHoMZiLp41_NaH4LMS_1YxF3udFHY6tFp0PDJ4OTS_U";
 
 /* 🔥 PAGINAÇÃO */
 const TAKE = 50;
