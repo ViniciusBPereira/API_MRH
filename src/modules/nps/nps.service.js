@@ -5,17 +5,17 @@ const BASE_URL = "https://ws.gps360.com.br/aplicacaoPesquisas";
 
 const TOKEN =
   process.env.GPS360_TOKEN ||
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE3NzU3NTA4MjQsImV4cCI6MTc3NTgzNzIyNCwic3ViIjoiMjNjZTI1NjYtZDg5YS00M2VkLTlhM2YtMTExNTA4NTJmODdmOkdQUzpBbmFsaXN0YTpnYWJyaWVsbGkuc2lsdmFAZ3Bzc2EuY29tLmJyIn0.YHoMZiLp41_NaH4LMS_1YxF3udFHY6tFp0PDJ4OTS_U";
+  "SEU_TOKEN_AQUI";
 
-/* 🔥 CONFIG PAGINAÇÃO */
+/* 🔥 PAGINAÇÃO */
 const TAKE = 50;
 
-/* ================= ANALISTAS ================= */
+/* ================= ANALISTAS (PREFIXO CORRETO) ================= */
 const ANALISTAS = [
-  "rayane_cristini",
-  "gabrielli.silva",
-  "yasmin_vieira",
-  "kamila.vitoria",
+  "raya",
+  "gabrielli",
+  "yasmin",
+  "kamila",
 ];
 
 /* =====================================================
@@ -41,14 +41,16 @@ async function buscarPorAnalista(analista) {
       timeout: 10000,
     });
 
-    const dados = response.data || [];
+    /* 🔥 AQUI ESTÁ A CORREÇÃO PRINCIPAL */
+    const lista = response.data?.aplicacaoPesquisas || [];
 
-    if (!dados.length) break;
+    if (!lista.length) break;
 
-    todos.push(...dados);
+    /* guarda o wrapper completo (pra normalização depois) */
+    todos.push(response.data);
 
     /* 🔥 se veio menos que TAKE → acabou */
-    if (dados.length < TAKE) break;
+    if (lista.length < TAKE) break;
 
     page++;
   }
@@ -87,6 +89,7 @@ export async function buscarNPS() {
           id: item.index,
           status: item.respondida_em ? "Respondida" : "Pendente",
           pesquisa: item.pesquisa?.nome || null,
+
           enviado_em: item.enviado_em,
           respondido_em: item.respondida_em,
 
