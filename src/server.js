@@ -1,26 +1,42 @@
-import express from "express";
+import http from "http";
 import app from "./app.js";
 import env from "./config/env.js";
 import path from "path";
 import { fileURLToPath } from "url";
+import { initSocket } from "./socket.js";
+import { startNPSScheduler } from "./modules/nps/nps.scheduler.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const server = express();
+/**
+ * 🔥 AQUI MUDA: cria servidor HTTP
+ */
+const server = http.createServer(app);
 
-/* ✅ AQUI ESTÁ O AJUSTE */
-server.use(app); // monta TODAS as rotas /api antes do frontend
+/**
+ * 🔌 Socket.IO
+ */
+const io = initSocket(server);
 
-// 🔹 Servir frontend somente fora de /api/**
-server.use(
+/**
+ * ⏱️ Scheduler NPS
+ */
+startNPSScheduler(io);
+
+/**
+ * 🔹 Servir frontend (mantido igual)
+ */
+app.use(
   express.static(
     path.join(__dirname, "..", "..", "Frontend", "build")
   )
 );
 
-// 🔹 Qualquer rota que NÃO comece com /api cai aqui
-server.get(/^\/(?!api).*/, (req, res) => {
+/**
+ * 🔹 Fallback React (mantido igual)
+ */
+app.get(/^\/(?!api).*/, (req, res) => {
   res.sendFile(
     path.join(
       __dirname,
@@ -33,6 +49,9 @@ server.get(/^\/(?!api).*/, (req, res) => {
   );
 });
 
+/**
+ * 🚀 Start server
+ */
 server.listen(env.PORT, () => {
   console.log(`🚀 Servidor rodando na porta ${env.PORT}`);
 });
