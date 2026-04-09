@@ -1,4 +1,5 @@
 import http from "http";
+import express from "express"; // ✅ FALTAVA ISSO
 import app from "./app.js";
 import env from "./config/env.js";
 import path from "path";
@@ -10,7 +11,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 /**
- * 🔥 AQUI MUDA: cria servidor HTTP
+ * 🔥 cria servidor HTTP
  */
 const server = http.createServer(app);
 
@@ -25,7 +26,7 @@ const io = initSocket(server);
 startNPSScheduler(io);
 
 /**
- * 🔹 Servir frontend (mantido igual)
+ * 🔹 Servir frontend
  */
 app.use(
   express.static(
@@ -34,7 +35,7 @@ app.use(
 );
 
 /**
- * 🔹 Fallback React (mantido igual)
+ * 🔹 Fallback React
  */
 app.get(/^\/(?!api).*/, (req, res) => {
   res.sendFile(
