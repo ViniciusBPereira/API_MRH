@@ -57,7 +57,12 @@ export async function getAdIdsAbertos() {
  */
 export async function existsByAdId(adId) {
   const result = await pool.query(
-    "SELECT 1 FROM mrhs WHERE ad_id = $1 LIMIT 1",
+    `
+      SELECT 1
+      FROM mrhs
+      WHERE ad_id = $1
+      LIMIT 1
+    `,
     [adId],
   );
 
@@ -94,7 +99,7 @@ export async function updateByAdId(adId, data) {
   const keys = Object.keys(sanitized);
   const values = Object.values(sanitized);
 
-  if (keys.length === 0) return;
+  if (!keys.length) return;
 
   const sets = keys.map((key, i) => `${key} = $${i + 1}`).join(", ");
 
@@ -120,4 +125,34 @@ export async function marcarEncerradas(adIds) {
   `;
 
   await pool.query(query, [adIds]);
+}
+
+/**
+ * Retorna MRHs que ainda não possuem localidade
+ */
+export async function getMRHsSemLocalidade() {
+  const result = await pool.query(`
+    SELECT
+      ad_id,
+      centro_custo
+    FROM mrhs
+    WHERE localidade IS NULL
+      AND centro_custo IS NOT NULL
+  `);
+
+  return result.rows;
+}
+
+/**
+ * Atualiza somente a localidade
+ */
+export async function updateLocalidade(adId, localidade) {
+  await pool.query(
+    `
+      UPDATE mrhs
+      SET localidade = $1
+      WHERE ad_id = $2
+    `,
+    [localidade, adId],
+  );
 }
