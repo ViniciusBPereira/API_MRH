@@ -33,10 +33,6 @@ async function sanitizeData(data) {
 
     if (validColumns.includes(column)) {
       sanitized[column] = value === undefined ? null : value;
-    } else {
-      console.warn(
-        `[MRH] Campo ignorado pois não existe na tabela: ${key}`
-      );
     }
   }
 
@@ -62,7 +58,7 @@ export async function getAdIdsAbertos() {
 export async function existsByAdId(adId) {
   const result = await pool.query(
     "SELECT 1 FROM mrhs WHERE ad_id = $1 LIMIT 1",
-    [adId]
+    [adId],
   );
 
   return result.rowCount > 0;
@@ -79,9 +75,7 @@ export async function insertMRH(data) {
 
   if (!columns.length) return;
 
-  const placeholders = columns
-    .map((_, i) => `$${i + 1}`)
-    .join(",");
+  const placeholders = columns.map((_, i) => `$${i + 1}`).join(",");
 
   const query = `
     INSERT INTO mrhs (${columns.join(",")})
@@ -102,9 +96,7 @@ export async function updateByAdId(adId, data) {
 
   if (keys.length === 0) return;
 
-  const sets = keys
-    .map((key, i) => `${key} = $${i + 1}`)
-    .join(", ");
+  const sets = keys.map((key, i) => `${key} = $${i + 1}`).join(", ");
 
   const query = `
     UPDATE mrhs

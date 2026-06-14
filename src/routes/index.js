@@ -12,7 +12,6 @@ import candidatosRoutes from "../modules/candidatos/candidatos.routes.js";
 import fichaRoutes from "../modules/fichas/ficha.routes.js";
 import candidatosRegistradosRoutes from "../modules/candidatosregistrados/candidatosregistrados.routes.js";
 import checkDocsRoutes from "../modules/checkdocs/checkdocs.routes.js";
-import npsRoutes from "../modules/nps/nps.routes.js";
 
 /* ================= RONDAS CORP ================= */
 import rondasRoutes from "../modules/rondasCorp/module/rondasCorpExport.routes.js";
@@ -28,9 +27,6 @@ import { authRondasCorp } from "../modules/rondasCorp/login/authRondasCorp.middl
 
 router.use("/auth", authRoutes);
 router.use("/rondas", rondasLoginRoutes);
-
-/* 🔥 NPS SEM AUTH */
-router.use("/nps", npsRoutes);
 
 /* =======================================================
    🛡️ RONDAS CORP
