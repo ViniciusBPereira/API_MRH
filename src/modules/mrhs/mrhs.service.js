@@ -46,22 +46,32 @@ export async function sincronizarMRHs() {
     let atualizados = 0;
 
     for (const item of mrhs) {
-      const existe = await repo.existsByAdId(item.AD_ID);
+  try {
+    const existe = await repo.existsByAdId(item.AD_ID);
 
-      if (!existe) {
-        await repo.insertMRH({
-          ...item,
-          encerrado: false,
-        });
-        inseridos++;
-      } else {
-        await repo.updateByAdId(item.AD_ID, {
-          ...item,
-          encerrado: false,
-        });
-        atualizados++;
-      }
+    if (!existe) {
+      await repo.insertMRH({
+        ...item,
+        encerrado: false,
+      });
+
+      inseridos++;
+    } else {
+      await repo.updateByAdId(item.AD_ID, {
+        ...item,
+        encerrado: false,
+      });
+
+      atualizados++;
     }
+  } catch (err) {
+    console.error(
+      `[SERVICE] Erro ao processar AD_ID ${item.AD_ID}`
+    );
+
+    console.error(err);
+  }
+}       
 
     // MRHs que estavam no banco mas não vieram mais da API
     const encerradas = adIdsBanco.filter((id) => !adIdsApi.includes(id));
