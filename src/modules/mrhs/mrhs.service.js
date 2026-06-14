@@ -50,65 +50,12 @@ async function buscarLocalidade(centroCusto) {
 }
 
 /**
- * EXECUTAR UMA ÚNICA VEZ
- */
-async function preencherLocalidadesPendentes() {
-  console.log("[LOCALIDADE] Buscando registros sem localidade...");
-
-  try {
-    const registros = await repo.getMRHsSemLocalidade();
-
-    console.log(`[LOCALIDADE] ${registros.length} registros encontrados`);
-
-    let atualizados = 0;
-
-    for (const registro of registros) {
-      try {
-        const localidade = await buscarLocalidade(registro.centro_custo);
-
-        if (!localidade) {
-          continue;
-        }
-
-        await repo.updateLocalidade(registro.ad_id, localidade);
-
-        atualizados++;
-
-        console.log(
-          `[LOCALIDADE] ${atualizados}/${registros.length} - AD_ID ${registro.ad_id}`,
-        );
-      } catch (error) {
-        console.error(`[LOCALIDADE] Erro ao processar AD_ID ${registro.ad_id}`);
-
-        console.error(error.message);
-      }
-    }
-
-    console.log(
-      `[LOCALIDADE] Finalizado. ${atualizados} registros atualizados.`,
-    );
-  } catch (error) {
-    console.error("[LOCALIDADE] Erro ao preencher localidades");
-
-    console.error(error);
-  }
-}
-
-/**
  * Sincroniza MRHs com a API externa
  */
 export async function sincronizarMRHs() {
   console.log("[SERVICE] Buscando MRHs abertas na API externa...");
 
   try {
-    /**
-     * ==================================================
-     * EXECUTAR UMA ÚNICA VEZ
-     * Depois de concluir, REMOVER ou COMENTAR
-     * ==================================================
-     */
-    await preencherLocalidadesPendentes();
-
     const body = {
       TPA: "",
       CP: "0",
