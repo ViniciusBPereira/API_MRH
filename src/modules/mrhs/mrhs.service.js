@@ -24,7 +24,7 @@ export async function sincronizarMRHs() {
     };
 
     const response = await axios.post(
-      "https://portalws.gpssa.com.br/SRH_API/api/Admissao/BuscarAbertas?_dc=1763676396616",
+      "https://portalws.gpssa.com.br/SRH_API/api/Admissao/BuscarAbertas?_dc=1781470620283",
       body,
       {
         headers: {
