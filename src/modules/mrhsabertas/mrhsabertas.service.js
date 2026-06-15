@@ -81,25 +81,7 @@ export async function listarMRHsAbertas() {
         mapaEmpresaCache[item.ad_filial] || "Empresa não mapeada",
       );
 
-      let endereco = "";
-
-      if (item.localidade) {
-        endereco = [
-          item.localidade.estado,
-          item.localidade.municipio,
-          item.localidade.bairro,
-          item.localidade.endereco,
-        ]
-          .filter(Boolean)
-          .map((v) => capitalizeFirstLetterEachWord(v))
-          .join(", ");
-      } else {
-        endereco = `${capitalizeFirstLetterEachWord(
-          (item.municipiocr || "").trim(),
-        )}, ${capitalizeFirstLetterEachWord(
-          (item.bairrocr || "").trim(),
-        )} - CEP: ${item.cepcr || ""}`;
-      }
+      const endereco = `${item.localidade.estado.toUpperCase()}, ${capitalizeFirstLetterEachWord(item.localidade.municipio)}, ${capitalizeFirstLetterEachWord(item.localidade.bairro)}, ${capitalizeFirstLetterEachWord(item.localidade.endereco)}`;
 
       const periodo = `${item.horaentrada || ""} - ${item.horasaida || ""}`;
       const crTratado = item.desccr?.split(" - ").slice(1).join(" - ") || "";
