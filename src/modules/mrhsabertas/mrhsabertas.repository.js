@@ -31,6 +31,7 @@ class MrhsAbertasRepository {
         m.nome_responsavel,
         m.ctt_xndire,
         m.ctt_xngerr,
+        m.localidade,
         m.ctt_xngere,
         m.ctt_xnsupe,
         m.escala,
