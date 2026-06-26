@@ -13,6 +13,11 @@ import fichaRoutes from "../modules/fichas/ficha.routes.js";
 import candidatosRegistradosRoutes from "../modules/candidatosregistrados/candidatosregistrados.routes.js";
 import checkDocsRoutes from "../modules/checkdocs/checkdocs.routes.js";
 
+/* ================= RADAR BP ================= */
+import visitRoutes from "../modules/radarbp/visit.routes.js";
+import trackingRoutes from "../modules/radarbp/tracking.routes.js";
+import actionRoutes from "../modules/radarbp/action.routes.js";
+
 /* ================= RONDAS CORP ================= */
 import rondasRoutes from "../modules/rondasCorp/module/rondasCorpExport.routes.js";
 import rondasLoginRoutes from "../modules/rondasCorp/login/rondasCorpLogin.routes.js";
@@ -47,5 +52,11 @@ router.use("/candidatos", candidatosRoutes);
 router.use("/candidatosregistrados", candidatosRegistradosRoutes);
 router.use("/fichas", fichaRoutes);
 router.use("/checkdocs", checkDocsRoutes);
+
+/* ================= RADAR BP ================= */
+
+router.use("/visits", visitRoutes);
+router.use("/tracking", trackingRoutes);
+router.use("/actions", actionRoutes);
 
 export default router;
