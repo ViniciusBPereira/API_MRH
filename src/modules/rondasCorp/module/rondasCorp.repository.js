@@ -34,7 +34,7 @@ export async function buscarRondasCorp() {
         tarefa.estruturanivel2 LIKE '91962%' OR
         tarefa.estruturanivel2 LIKE '91858%'
       )
-      AND tarefa.terminoreal >= TIMESTAMP '2026-06-01 00:00:00'
+      AND tarefa.terminoreal >= TIMESTAMP '2026-06-20 00:00:00'
     ORDER BY tarefa.numero
   `;
 
