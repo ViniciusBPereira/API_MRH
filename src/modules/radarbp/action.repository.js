@@ -3,10 +3,10 @@ import pool from "../../config/db.js";
 class ActionRepository {
   async findAll() {
     const sql = `
-            SELECT *
-            FROM actions
-            ORDER BY due_date;
-        `;
+      SELECT *
+      FROM actions
+      ORDER BY due_date;
+    `;
 
     const { rows } = await pool.query(sql);
 
@@ -15,10 +15,10 @@ class ActionRepository {
 
   async findById(id) {
     const sql = `
-            SELECT *
-            FROM actions
-            WHERE id = $1;
-        `;
+      SELECT *
+      FROM actions
+      WHERE id = $1;
+    `;
 
     const { rows } = await pool.query(sql, [id]);
 
@@ -27,11 +27,11 @@ class ActionRepository {
 
   async findByVisit(visitId) {
     const sql = `
-            SELECT *
-            FROM actions
-            WHERE visit_id = $1
-            ORDER BY due_date;
-        `;
+      SELECT *
+      FROM actions
+      WHERE visit_id = $1
+      ORDER BY due_date;
+    `;
 
     const { rows } = await pool.query(sql, [visitId]);
 
@@ -40,11 +40,11 @@ class ActionRepository {
 
   async findByContract(contract) {
     const sql = `
-            SELECT *
-            FROM actions
-            WHERE contract = $1
-            ORDER BY due_date;
-        `;
+      SELECT *
+      FROM actions
+      WHERE contract = $1
+      ORDER BY due_date;
+    `;
 
     const { rows } = await pool.query(sql, [contract]);
 
@@ -52,25 +52,45 @@ class ActionRepository {
   }
 
   async create(data) {
+    // Busca a visita mais recente do contrato
+    const visitQuery = `
+      SELECT id
+      FROM visits
+      WHERE contract = $1
+      ORDER BY visit_date DESC NULLS LAST,
+               created_at DESC NULLS LAST
+      LIMIT 1;
+    `;
+
+    const visitResult = await pool.query(visitQuery, [data.contract]);
+
+    if (visitResult.rows.length === 0) {
+      throw new Error(
+        "Não existe nenhuma visita cadastrada para este contrato.",
+      );
+    }
+
+    const visitId = visitResult.rows[0].id;
+
     const sql = `
-            INSERT INTO actions (
-                visit_id,
-                contract,
-                description,
-                execution,
-                indicators,
-                owner,
-                due_date,
-                stage
-            )
-            VALUES (
-                $1,$2,$3,$4,$5,$6,$7,$8
-            )
-            RETURNING *;
-        `;
+      INSERT INTO actions (
+        visit_id,
+        contract,
+        description,
+        execution,
+        indicators,
+        owner,
+        due_date,
+        stage
+      )
+      VALUES (
+        $1,$2,$3,$4,$5,$6,$7,$8
+      )
+      RETURNING *;
+    `;
 
     const values = [
-      data.visit_id,
+      visitId,
       data.contract,
       data.description,
       data.execution,
@@ -86,24 +106,44 @@ class ActionRepository {
   }
 
   async update(id, data) {
+    // Busca novamente a visita mais recente do contrato
+    const visitQuery = `
+      SELECT id
+      FROM visits
+      WHERE contract = $1
+      ORDER BY visit_date DESC NULLS LAST,
+               created_at DESC NULLS LAST
+      LIMIT 1;
+    `;
+
+    const visitResult = await pool.query(visitQuery, [data.contract]);
+
+    if (visitResult.rows.length === 0) {
+      throw new Error(
+        "Não existe nenhuma visita cadastrada para este contrato.",
+      );
+    }
+
+    const visitId = visitResult.rows[0].id;
+
     const sql = `
-            UPDATE actions
-            SET
-                visit_id = $1,
-                contract = $2,
-                description = $3,
-                execution = $4,
-                indicators = $5,
-                owner = $6,
-                due_date = $7,
-                stage = $8,
-                updated_at = CURRENT_TIMESTAMP
-            WHERE id = $9
-            RETURNING *;
-        `;
+      UPDATE actions
+      SET
+        visit_id = $1,
+        contract = $2,
+        description = $3,
+        execution = $4,
+        indicators = $5,
+        owner = $6,
+        due_date = $7,
+        stage = $8,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = $9
+      RETURNING *;
+    `;
 
     const values = [
-      data.visit_id,
+      visitId,
       data.contract,
       data.description,
       data.execution,
@@ -120,7 +160,13 @@ class ActionRepository {
   }
 
   async delete(id) {
-    await pool.query(`DELETE FROM actions WHERE id = $1`, [id]);
+    await pool.query(
+      `
+      DELETE FROM actions
+      WHERE id = $1
+    `,
+      [id],
+    );
 
     return true;
   }

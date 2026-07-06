@@ -8,7 +8,9 @@ class ActionService {
   async getById(id) {
     const action = await actionRepository.findById(id);
 
-    if (!action) throw new Error("Ação não encontrada.");
+    if (!action) {
+      throw new Error("Ação não encontrada.");
+    }
 
     return action;
   }
@@ -22,21 +24,31 @@ class ActionService {
   }
 
   async create(data) {
-    return await actionRepository.create(data);
+    return await actionRepository.create({
+      ...data,
+      visit_id: data.visit_id || null,
+    });
   }
 
   async update(id, data) {
     const action = await actionRepository.findById(id);
 
-    if (!action) throw new Error("Ação não encontrada.");
+    if (!action) {
+      throw new Error("Ação não encontrada.");
+    }
 
-    return await actionRepository.update(id, data);
+    return await actionRepository.update(id, {
+      ...data,
+      visit_id: data.visit_id || null,
+    });
   }
 
   async delete(id) {
     const action = await actionRepository.findById(id);
 
-    if (!action) throw new Error("Ação não encontrada.");
+    if (!action) {
+      throw new Error("Ação não encontrada.");
+    }
 
     await actionRepository.delete(id);
 

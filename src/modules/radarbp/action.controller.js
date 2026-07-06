@@ -75,8 +75,13 @@ export async function createAction(req, res) {
 
     return res.status(201).json(created);
   } catch (error) {
+    console.error(error);
+
     return res.status(400).json({
       message: error.message,
+      detail: error.detail,
+      routine: error.routine,
+      code: error.code,
     });
   }
 }
