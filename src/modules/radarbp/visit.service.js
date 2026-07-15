@@ -1,5 +1,6 @@
 import visitRepository from "./visit.repository.js";
 import diagnosisService from "./diagnosis.service.js";
+import trackingRepository from "./tracking.repository.js";
 
 class VisitService {
   async getAll() {
@@ -16,11 +17,14 @@ class VisitService {
     return visit;
   }
 
-  async getByContract(contract) {
-    return await visitRepository.findByContract(contract);
+  async getByPec(pec) {
+    return await visitRepository.findByPec(pec);
   }
 
+
   async create(data) {
+
+    // Calcula diagnóstico
     const diagnosis = diagnosisService.calculate(data);
 
     const visitData = {
@@ -28,8 +32,34 @@ class VisitService {
       ...diagnosis,
     };
 
-    return await visitRepository.create(visitData);
+
+    // 1 - Cria a visita
+    const visit = await visitRepository.create(visitData);
+
+
+
+    await trackingRepository.create({
+  month: data.visit_date.substring(0,7),
+
+  cr: data.cr,
+
+  turnover: data.turnover,
+  absenteeism: data.absenteeism,
+  he_inefficiency: data.he_inefficiency,
+
+  labor_actions: data.labor_actions,
+  replacement_days: data.replacement_days,
+
+  headcount: data.headcount,
+
+  notes: data.overview
+});
+
+
+    return visit;
   }
+
+
 
   async update(id, data) {
     const visit = await visitRepository.findById(id);
@@ -47,6 +77,8 @@ class VisitService {
 
     return await visitRepository.update(id, visitData);
   }
+
+
 
   async delete(id) {
     const visit = await visitRepository.findById(id);

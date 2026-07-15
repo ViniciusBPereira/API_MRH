@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { uploadActions } from "./action.upload.js";
 
 import {
   getActions,
@@ -8,43 +9,64 @@ import {
   createAction,
   updateAction,
   deleteAction,
+  getFiles,
+  uploadFiles,
+  downloadFile,
+  deleteFile,
 } from "./action.controller.js";
 
 const router = Router();
 
 /* =====================================================
-   📄 AÇÕES
+   AÇÕES
 ===================================================== */
+
 router.get("/", getActions);
 
-/* =====================================================
-   🔍 BUSCAR AÇÃO
-===================================================== */
-router.get("/:id", getActionById);
-
-/* =====================================================
-   📄 BUSCAR POR VISITA
-===================================================== */
 router.get("/visit/:visitId", getActionsByVisit);
 
-/* =====================================================
-   📄 BUSCAR POR CONTRATO
-===================================================== */
 router.get("/contract/:contract", getActionsByContract);
 
 /* =====================================================
-   ➕ CRIAR AÇÃO
+   ARQUIVOS
 ===================================================== */
-router.post("/", createAction);
+
+router.get("/:id/files", getFiles);
+
+router.post(
+  "/:id/files",
+  uploadActions.array("files"),
+  uploadFiles
+);
+
+router.get(
+  "/:id/files/:fileId",
+  downloadFile
+);
+
+router.delete(
+  "/:id/files/:fileId",
+  deleteFile
+);
 
 /* =====================================================
-   ✏️ ATUALIZAR AÇÃO
+   CRUD
 ===================================================== */
-router.put("/:id", updateAction);
 
-/* =====================================================
-   🗑 REMOVER AÇÃO
-===================================================== */
+router.get("/:id", getActionById);
+
+router.post(
+  "/",
+  uploadActions.array("files"),
+  createAction
+);
+
+router.put(
+  "/:id",
+  uploadActions.array("files"),
+  updateAction
+);
+
 router.delete("/:id", deleteAction);
 
 export default router;

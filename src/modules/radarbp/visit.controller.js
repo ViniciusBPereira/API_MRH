@@ -41,19 +41,19 @@ export async function getVisitById(req, res) {
 }
 
 /* =====================================================
-   📄 GET /visits/contract/:contract
+   📄 GET /visits/pec/:pec
 ===================================================== */
-export async function getVisitsByContract(req, res) {
+export async function getVisitsByPec(req, res) {
   try {
-    const { contract } = req.params;
+    const { pec } = req.params;
 
-    if (!contract) {
+    if (!pec) {
       return res.status(400).json({
-        message: "Contrato é obrigatório.",
+        message: "PEC é obrigatório.",
       });
     }
 
-    const visits = await visitService.getByContract(contract);
+    const visits = await visitService.getByPec(pec);
 
     return res.status(200).json(visits);
   } catch (error) {

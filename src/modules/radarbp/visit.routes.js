@@ -3,7 +3,7 @@ import { Router } from "express";
 import {
   getVisits,
   getVisitById,
-  getVisitsByContract,
+  getVisitsByPec,
   createVisit,
   updateVisit,
   deleteVisit,
@@ -22,9 +22,9 @@ router.get("/", getVisits);
 router.get("/:id", getVisitById);
 
 /* =====================================================
-   📄 BUSCAR POR CONTRATO
+   📄 BUSCAR POR PEC
 ===================================================== */
-router.get("/contract/:contract", getVisitsByContract);
+router.get("/pec/:pec", getVisitsByPec);
 
 /* =====================================================
    ➕ CRIAR VISITA

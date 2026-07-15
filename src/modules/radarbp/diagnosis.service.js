@@ -160,8 +160,10 @@ class DiagnosisService {
   }
 
   generateOpinion(data, score, classification, priority) {
-    return `
-Contrato ${data.contract}
+  return `
+PEC: ${data.pec}
+
+CR: ${data.cr}
 
 Score Final: ${score}
 
@@ -171,10 +173,14 @@ ${classification}
 Priorização:
 ${priority}
 
-Causa raiz:
-${data.root_cause || "Não informada"}
+Causa(s) raiz:
+${
+  Array.isArray(data.root_cause)
+    ? data.root_cause.join(", ")
+    : data.root_cause || "Não informada"
+}
 `.trim();
-  }
+}
 }
 
 export default new DiagnosisService();

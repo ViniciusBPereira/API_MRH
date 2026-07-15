@@ -13,8 +13,8 @@ class TrackingService {
     return tracking;
   }
 
-  async getByContract(contract) {
-    return await trackingRepository.findByContract(contract);
+  async getByContract(cr) {
+    return await trackingRepository.findByContract(cr);
   }
 
   async create(data) {
