@@ -99,7 +99,7 @@ class CandidatosRepository {
   async getDocuments(id) {
     const result = await pool.query(
       `SELECT docs FROM candidatos WHERE id = $1`,
-      [id]
+      [id],
     );
 
     let docs = result.rows[0]?.docs || [];
@@ -319,6 +319,38 @@ class CandidatosRepository {
 
     const result = await pool.query(query, [fichaId, candidatoId]);
     return result.rows[0];
+  }
+  /* -----------------------------------------------------
+   * VERIFICA SE A MRH EXISTE
+   * ----------------------------------------------------- */
+  async existeMrh(mrhId) {
+    const query = `
+      SELECT ad_id
+      FROM mrhs
+      WHERE ad_id = $1
+      LIMIT 1;
+    `;
+
+    const { rows } = await pool.query(query, [mrhId]);
+    return rows.length > 0;
+  }
+
+  /* -----------------------------------------------------
+   * MOVER CANDIDATO PARA OUTRA MRH
+   * ----------------------------------------------------- */
+  async moverParaMrh(candidatoId, novaMrh) {
+    const query = `
+      UPDATE candidatos
+      SET
+        mrh_id = $1,
+        atualizado_em = NOW()
+      WHERE id = $2
+      RETURNING *;
+    `;
+
+    const { rows } = await pool.query(query, [novaMrh, candidatoId]);
+
+    return rows[0] || null;
   }
 }
 

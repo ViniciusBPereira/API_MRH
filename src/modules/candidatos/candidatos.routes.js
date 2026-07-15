@@ -13,7 +13,8 @@ import {
   importarCSV,
   getFicha,
   deleteDocumento,
-  putValidacaoIndividual, // 🔥 novo
+  putValidacaoIndividual,
+  putMoverMrh,
 } from "./candidatos.controller.js";
 
 const router = Router();
@@ -55,15 +56,13 @@ router.delete("/:id", deleteCandidato);
 ------------------------------------------------------- */
 router.post("/importar-csv/:mrhId", uploadCSV.single("arquivo"), importarCSV);
 
-/* -------------------------------------------------------
-   CRUD DO CANDIDATO (COMPLETO)
-------------------------------------------------------- */
+router.put("/mover-mrh/:id", putMoverMrh);
+
+// CRUD
 router.post("/:mrhId", postCandidato);
 router.put("/edit/:id", putCandidato);
 
-/* -------------------------------------------------------
-   LISTAR CANDIDATOS POR MRH (GENÉRICA → POR ÚLTIMO!)
-------------------------------------------------------- */
+// GENÉRICA POR ÚLTIMO
 router.get("/:mrhId", getCandidatos);
 
 export default router;

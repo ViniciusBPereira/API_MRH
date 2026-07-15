@@ -249,3 +249,39 @@ export async function fichaCandidatoService(candidatoId) {
 
   return { candidato: base, ficha: null };
 }
+/* -----------------------------------------------------
+ * MOVER CANDIDATO PARA OUTRA MRH
+ * ----------------------------------------------------- */
+export async function moverCandidatoParaMrh(candidatoId, novaMrh) {
+  if (!candidatoId) {
+    throw new Error("Candidato não informado.");
+  }
+
+  if (!novaMrh) {
+    throw new Error("Nova MRH não informada.");
+  }
+
+  // Verifica se a MRH existe
+  const existe = await repo.existeMrh(novaMrh);
+
+  if (!existe) {
+    const err = new Error("A MRH informada não existe.");
+    err.code = "MRH_NAO_EXISTE";
+    throw err;
+  }
+
+  // Move o candidato
+  const candidato = await repo.moverParaMrh(candidatoId, novaMrh);
+
+  if (!candidato) {
+    const err = new Error("Candidato não encontrado.");
+    err.code = "CANDIDATO_NAO_ENCONTRADO";
+    throw err;
+  }
+
+  return {
+    sucesso: true,
+    mensagem: "Candidato movido com sucesso.",
+    candidato,
+  };
+}

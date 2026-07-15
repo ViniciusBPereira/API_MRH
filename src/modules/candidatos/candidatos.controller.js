@@ -9,7 +9,8 @@ import {
   listarDocumentosService,
   removerDocumentoService,
   atualizarStatus,
-  atualizarValidacaoIndividual, // ✅ NOVO
+  atualizarValidacaoIndividual,
+  moverCandidatoParaMrh,
 } from "./candidatos.service.js";
 
 /* -----------------------------------------------------
@@ -86,6 +87,27 @@ export async function putStatus(req, res) {
     return res.status(400).json({
       sucesso: false,
       mensagem: error.message || "Erro ao atualizar status.",
+    });
+  }
+}
+
+/* -----------------------------------------------------
+ * MOVER CANDIDATO PARA OUTRA MRH
+ * ----------------------------------------------------- */
+export async function putMoverMrh(req, res) {
+  try {
+    const { id } = req.params;
+    const { mrhId } = req.body;
+
+    const resultado = await moverCandidatoParaMrh(id, mrhId);
+
+    return res.status(200).json(resultado);
+  } catch (error) {
+    console.error("Erro putMoverMrh:", error);
+
+    return res.status(400).json({
+      sucesso: false,
+      mensagem: error.message || "Erro ao mover candidato.",
     });
   }
 }
