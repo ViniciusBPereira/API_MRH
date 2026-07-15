@@ -1,6 +1,6 @@
 import repo from "./candidatos.repository.js";
 import fichaRepo from "../fichas/ficha.repository.js";
-import { parseCSV } from "./candidatos.csv.js";
+import { parseArquivo } from "./candidatos.csv.js";
 
 /* -----------------------------------------------------
  * FORMATADOR DE STRINGS
@@ -36,7 +36,7 @@ export async function listarPorMRH(mrhId) {
     ...item,
 
     nome: capitalize(item.nome),
-    endereco: capitalize(item.endereco),
+    endereco: "",
     docs: sanitizeDocs(item.docs),
 
     // 🔥 NORMALIZAÇÃO DOS CAMPOS QUE O FRONT ESPERA
@@ -82,7 +82,7 @@ export async function atualizarStatus(id, status) {
 
   if (!["", "Selecionado"].includes(normalizado)) {
     throw new Error(
-      "Status inválido. Use '' (Não Selecionado) ou 'Selecionado'."
+      "Status inválido. Use '' (Não Selecionado) ou 'Selecionado'.",
     );
   }
 
@@ -123,7 +123,7 @@ export async function atualizarValidacaoIndividual(id, campo, valor) {
   const atualizado = await repo.updateValidacaoIndividual(
     id,
     campo,
-    normalizado
+    normalizado,
   );
 
   return {
@@ -192,8 +192,8 @@ export async function removerDocumentoService(id, fileName) {
 /* -----------------------------------------------------
  * IMPORTAÇÃO CSV
  * ----------------------------------------------------- */
-export async function importarCSVService(mrhId, fileBuffer) {
-  const linhas = await parseCSV(fileBuffer);
+export async function importarCSVService(mrhId, file) {
+  const linhas = await parseArquivo(file);
   let inseridos = 0;
 
   for (const linha of linhas) {

@@ -23,7 +23,7 @@ export async function getCandidatos(req, res) {
     const lista = await listarPorMRH(mrhId);
 
     console.log(
-      `[CANDIDATOS] Usuário '${usuario}' consultou candidatos da MRH ${mrhId}`
+      `[CANDIDATOS] Usuário '${usuario}' consultou candidatos da MRH ${mrhId}`,
     );
 
     return res.status(200).json(lista);
@@ -197,14 +197,11 @@ export async function importarCSV(req, res) {
     if (!req.file || !req.file.buffer) {
       return res.status(400).json({
         sucesso: false,
-        mensagem: "Nenhum arquivo CSV enviado.",
+        mensagem: "Nenhum arquivo enviado.",
       });
     }
 
-    const resultado = await importarCSVService(
-      req.params.mrhId,
-      req.file.buffer
-    );
+    const resultado = await importarCSVService(req.params.mrhId, req.file);
 
     return res.status(200).json(resultado);
   } catch (error) {
