@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import actionService from "./action.service.js";
+import crypto from "crypto";
 
 /* =====================================================
    📄 GET /actions
