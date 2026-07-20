@@ -46,21 +46,13 @@ class TrackingRepository {
   async findEditData(id) {
     const sql = `
       SELECT
-        t.id                AS tracking_id,
-        t.month             AS tracking_month,
-
-        t.turnover          AS tracking_turnover,
-        t.absenteeism       AS tracking_absenteeism,
-        t.he_inefficiency   AS tracking_he_inefficiency,
-        t.labor_actions     AS tracking_labor_actions,
-        t.replacement_days  AS tracking_replacement_days,
-        t.headcount         AS tracking_headcount,
-        t.notes             AS tracking_notes,
-
-        v.*
+    t.id AS tracking_id,
+    t.month,
+    t.notes,
+    v.*
       FROM tracking t
       INNER JOIN visits v
-        ON v.contract = t.cr
+        ON v.cr = t.cr
        AND TO_CHAR(v.visit_date,'YYYY-MM') = t.month
       WHERE t.id = $1;
     `;
@@ -149,6 +141,16 @@ class TrackingRepository {
 
     try {
       await client.query("BEGIN");
+      const tracking = await client.query(
+  `
+  SELECT *
+  FROM tracking
+  WHERE id = $1
+  `,
+  [id]
+);
+
+const oldTracking = tracking.rows[0];
 
       // Atualiza Tracking
       await client.query(
@@ -186,7 +188,7 @@ class TrackingRepository {
         UPDATE visits
         SET
           visit_date = $1,
-          contract = $2,
+          cr = $2,
           client = $3,
           unit = $4,
           bp = $5,
@@ -216,12 +218,12 @@ class TrackingRepository {
           executive_opinion = $29,
           action_plan = $30,
           updated_at = CURRENT_TIMESTAMP
-        WHERE contract = $31
+        WHERE cr = $31
           AND TO_CHAR(visit_date,'YYYY-MM') = $32
         `,
         [
           data.visit_date,
-          data.contract,
+          data.cr,
           data.client,
           data.unit,
           data.bp,
@@ -250,8 +252,8 @@ class TrackingRepository {
           data.priority,
           data.executive_opinion,
           JSON.stringify(data.action_plan),
-          data.contract,
-          data.visit_date.substring(0, 7),
+          data.cr,
+          oldTracking.month,
         ]
       );
 
