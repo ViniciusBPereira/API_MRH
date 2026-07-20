@@ -7,7 +7,7 @@ class VisitRepository {
       FROM visits
       ORDER BY visit_date DESC;
     `;
-console.log(sql)
+
     const { rows } = await pool.query(sql);
 
     return rows;
@@ -117,7 +117,9 @@ console.log(sql)
     ];
 
     const { rows } = await pool.query(sql, values);
-@@ -120,76 +107,31 @@ console.log(sql)
+
+    return rows[0];
+  }
 
   async update(id, data) {
     const sql = `
@@ -194,18 +196,16 @@ console.log(sql)
       id,
     ];
 
-@@ -198,11 +140,142 @@ console.log(sql)
+    const { rows } = await pool.query(sql, values);
+
     return rows[0];
   }
 
   async delete(id) {
-    await pool.query("DELETE FROM visits WHERE id = $1", [id]);
-
-
-
-
-
-
+    await pool.query(
+      "DELETE FROM visits WHERE id = $1",
+      [id]
+    );
 
     return true;
   }
