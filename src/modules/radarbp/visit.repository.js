@@ -1,13 +1,13 @@
 import pool from "../../config/db.js";
 
-class TrackingRepository {
+class VisitRepository {
   async findAll() {
     const sql = `
       SELECT *
-      FROM tracking
-      ORDER BY month DESC;
+      FROM visits
+      ORDER BY visit_date DESC;
     `;
-
+console.log(sql)
     const { rows } = await pool.query(sql);
 
     return rows;
@@ -16,7 +16,7 @@ class TrackingRepository {
   async findById(id) {
     const sql = `
       SELECT *
-      FROM tracking
+      FROM visits
       WHERE id = $1;
     `;
 
@@ -25,257 +25,190 @@ class TrackingRepository {
     return rows[0];
   }
 
-  async findByContract(cr) {
+  async findByPec(pec) {
     const sql = `
       SELECT *
-      FROM tracking
-      WHERE cr = $1
-      ORDER BY month DESC;
+      FROM visits
+      WHERE pec = $1
+      ORDER BY visit_date DESC;
     `;
 
-    const { rows } = await pool.query(sql, [cr]);
+    const { rows } = await pool.query(sql, [pec]);
 
     return rows;
   }
 
-  /**
-   * Dados utilizados na tela de edição.
-   * Retorna informações do acompanhamento + visita.
-   */
-  async findEditData(id) {
-    const sql = `
-      SELECT
-        t.id                AS tracking_id,
-        t.month             AS tracking_month,
-
-        t.turnover          AS tracking_turnover,
-        t.absenteeism       AS tracking_absenteeism,
-        t.he_inefficiency   AS tracking_he_inefficiency,
-        t.labor_actions     AS tracking_labor_actions,
-        t.replacement_days  AS tracking_replacement_days,
-        t.headcount         AS tracking_headcount,
-        t.notes             AS tracking_notes,
-
-        v.*
-      FROM tracking t
-      INNER JOIN visits v
-        ON v.cr = t.cr
-       AND TO_CHAR(v.visit_date,'YYYY-MM') = t.month
-      WHERE t.id = $1;
-    `;
-
-    const { rows } = await pool.query(sql, [id]);
-
-    return rows[0];
-  }
-
   async create(data) {
     const sql = `
-      INSERT INTO tracking (
-        month,
+      INSERT INTO visits (
+        visit_date,
+        pec,
         cr,
+        client,
+        unit,
+        bp,
+        leadership_name,
+        headcount,
+        employees_approached,
         turnover,
         absenteeism,
         he_inefficiency,
-        labor_actions,
+        open_positions,
         replacement_days,
-        headcount,
-        notes
+        labor_actions,
+        warnings,
+        enps,
+        root_cause,
+        evidence,
+        overview,
+        leadership_score,
+        climate_score,
+        structure_score,
+        customer_score,
+        indicator_score,
+        pillar_score,
+        final_score,
+        classification,
+        priority,
+        executive_opinion,
+        action_plan
       )
       VALUES (
-        $1,$2,$3,$4,$5,$6,$7,$8,$9
+        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,
+        $11,$12,$13,$14,$15,$16,$17,$18,$19,$20,
+        $21,$22,$23,$24,$25,$26,$27,$28,$29,$30,
+        $31
       )
       RETURNING *;
     `;
 
     const values = [
-      data.month,
+      data.visit_date,
+      data.pec,
       data.cr,
+      data.client,
+      data.unit,
+      data.bp,
+      data.leadership_name,
+      data.headcount,
+      data.employees_approached,
       data.turnover,
       data.absenteeism,
       data.he_inefficiency,
-      data.labor_actions,
+      data.open_positions,
       data.replacement_days,
-      data.headcount,
-      data.notes,
+      data.labor_actions,
+      data.warnings,
+      data.enps,
+      data.root_cause,
+      data.evidence,
+      data.overview,
+      data.leadership_score,
+      data.climate_score,
+      data.structure_score,
+      data.customer_score,
+      data.indicator_score,
+      data.pillar_score,
+      data.final_score,
+      data.classification,
+      data.priority,
+      data.executive_opinion,
+      JSON.stringify(data.action_plan),
     ];
 
     const { rows } = await pool.query(sql, values);
-
-    return rows[0];
-  }
+@@ -120,76 +107,31 @@ console.log(sql)
 
   async update(id, data) {
     const sql = `
-      UPDATE tracking
+      UPDATE visits
       SET
-        month = $1,
-        cr = $2,
-        turnover = $3,
-        absenteeism = $4,
-        he_inefficiency = $5,
-        labor_actions = $6,
-        replacement_days = $7,
+        visit_date = $1,
+        pec = $2,
+        cr = $3,
+        client = $4,
+        unit = $5,
+        bp = $6,
+        leadership_name = $7,
         headcount = $8,
-        notes = $9
-      WHERE id = $10
+        employees_approached = $9,
+        turnover = $10,
+        absenteeism = $11,
+        he_inefficiency = $12,
+        open_positions = $13,
+        replacement_days = $14,
+        labor_actions = $15,
+        warnings = $16,
+        enps = $17,
+        root_cause = $18,
+        evidence = $19,
+        overview = $20,
+        leadership_score = $21,
+        climate_score = $22,
+        structure_score = $23,
+        customer_score = $24,
+        indicator_score = $25,
+        pillar_score = $26,
+        final_score = $27,
+        classification = $28,
+        priority = $29,
+        executive_opinion = $30,
+        action_plan = $31,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = $32
       RETURNING *;
     `;
 
     const values = [
-      data.month,
+      data.visit_date,
+      data.pec,
       data.cr,
+      data.client,
+      data.unit,
+      data.bp,
+      data.leadership_name,
+      data.headcount,
+      data.employees_approached,
       data.turnover,
       data.absenteeism,
       data.he_inefficiency,
-      data.labor_actions,
+      data.open_positions,
       data.replacement_days,
-      data.headcount,
-      data.notes,
+      data.labor_actions,
+      data.warnings,
+      data.enps,
+      data.root_cause,
+      data.evidence,
+      data.overview,
+      data.leadership_score,
+      data.climate_score,
+      data.structure_score,
+      data.customer_score,
+      data.indicator_score,
+      data.pillar_score,
+      data.final_score,
+      data.classification,
+      data.priority,
+      data.executive_opinion,
+      JSON.stringify(data.action_plan),
       id,
     ];
 
-    const { rows } = await pool.query(sql, values);
-
+@@ -198,11 +140,142 @@ console.log(sql)
     return rows[0];
   }
 
-  /**
-   * Atualiza Tracking e Visita em uma única transação.
-   */
-  async updateEdit(id, data) {
-    const client = await pool.connect();
-
-    try {
-      await client.query("BEGIN");
-
-      // Atualiza Tracking
-      await client.query(
-        `
-        UPDATE tracking
-        SET
-          month = $1,
-          cr = $2,
-          turnover = $3,
-          absenteeism = $4,
-          he_inefficiency = $5,
-          labor_actions = $6,
-          replacement_days = $7,
-          headcount = $8,
-          notes = $9
-        WHERE id = $10
-        `,
-        [
-          data.visit_date.substring(0, 7),
-          data.cr,
-          data.turnover,
-          data.absenteeism,
-          data.he_inefficiency,
-          data.labor_actions,
-          data.replacement_days,
-          data.headcount,
-          data.overview,
-          id,
-        ]
-      );
-
-      // Atualiza Visita
-      await client.query(
-        `
-        UPDATE visits
-        SET
-          visit_date = $1,
-          cr = $2,
-          client = $3,
-          unit = $4,
-          bp = $5,
-          leadership_name = $6,
-          headcount = $7,
-          employees_approached = $8,
-          turnover = $9,
-          absenteeism = $10,
-          he_inefficiency = $11,
-          open_positions = $12,
-          replacement_days = $13,
-          labor_actions = $14,
-          warnings = $15,
-          enps = $16,
-          root_cause = $17,
-          evidence = $18,
-          overview = $19,
-          leadership_score = $20,
-          climate_score = $21,
-          structure_score = $22,
-          customer_score = $23,
-          indicator_score = $24,
-          pillar_score = $25,
-          final_score = $26,
-          classification = $27,
-          priority = $28,
-          executive_opinion = $29,
-          action_plan = $30,
-          updated_at = CURRENT_TIMESTAMP
-        WHERE cr = $31
-          AND TO_CHAR(visit_date,'YYYY-MM') = $32
-        `,
-        [
-          data.visit_date,
-          data.cr,
-          data.client,
-          data.unit,
-          data.bp,
-          data.leadership_name,
-          data.headcount,
-          data.employees_approached,
-          data.turnover,
-          data.absenteeism,
-          data.he_inefficiency,
-          data.open_positions,
-          data.replacement_days,
-          data.labor_actions,
-          data.warnings,
-          data.enps,
-          data.root_cause,
-          data.evidence,
-          data.overview,
-          data.leadership_score,
-          data.climate_score,
-          data.structure_score,
-          data.customer_score,
-          data.indicator_score,
-          data.pillar_score,
-          data.final_score,
-          data.classification,
-          data.priority,
-          data.executive_opinion,
-          JSON.stringify(data.action_plan),
-          data.cr,
-          data.visit_date.substring(0, 7),
-        ]
-      );
-
-      await client.query("COMMIT");
-
-      return await this.findEditData(id);
-    } catch (err) {
-      await client.query("ROLLBACK");
-      throw err;
-    } finally {
-      client.release();
-    }
-  }
-
   async delete(id) {
-    await pool.query(
-      `
-      DELETE FROM tracking
-      WHERE id = $1
-      `,
-      [id]
-    );
+    await pool.query("DELETE FROM visits WHERE id = $1", [id]);
+
+
+
+
+
+
 
     return true;
   }
 }
 
-export default new TrackingRepository();
+export default new VisitRepository();
