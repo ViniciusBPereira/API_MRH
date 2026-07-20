@@ -13,18 +13,15 @@ import {
 
 const router = Router();
 
-
 /* =====================================================
-   📄 ACOMPANHAMENTOS
+   📄 LISTAR ACOMPANHAMENTOS
 ===================================================== */
 router.get("/", getTracking);
 
-
 /* =====================================================
-   🔍 BUSCAR ACOMPANHAMENTO POR ID
+   📄 BUSCAR ACOMPANHAMENTOS POR CR
 ===================================================== */
-router.get("/:id", getTrackingById);
-
+router.get("/cr/:cr", getTrackingByContract);
 
 /* =====================================================
    ✏️ BUSCAR DADOS PARA EDIÇÃO
@@ -32,35 +29,29 @@ router.get("/:id", getTrackingById);
 ===================================================== */
 router.get("/:id/edit", getTrackingEdit);
 
-
 /* =====================================================
-   📄 BUSCAR POR CR
+   🔍 BUSCAR ACOMPANHAMENTO POR ID
 ===================================================== */
-router.get("/cr/:cr", getTrackingByContract);
-
+router.get("/:id", getTrackingById);
 
 /* =====================================================
    ➕ CRIAR ACOMPANHAMENTO
 ===================================================== */
 router.post("/", createTracking);
 
-
 /* =====================================================
    ✏️ ATUALIZAR SOMENTE TRACKING
 ===================================================== */
 router.put("/:id", updateTracking);
-
 
 /* =====================================================
    ✏️ ATUALIZAR TRACKING + VISITA
 ===================================================== */
 router.put("/:id/edit", updateTrackingEdit);
 
-
 /* =====================================================
    🗑 REMOVER ACOMPANHAMENTO
 ===================================================== */
 router.delete("/:id", deleteTracking);
-
 
 export default router;
