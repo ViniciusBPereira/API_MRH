@@ -63,12 +63,10 @@ class ActionRepository {
 
   const { rows } = await pool.query(visitQuery, [data.cr]);
 
-  // Se já existe uma visita para o contrato, utiliza ela
-  if (rows.length > 0) {
+  if (rows.length) {
     return rows[0].id;
   }
 
-  // Caso não exista, cria uma visita automaticamente
   const insertVisit = `
     INSERT INTO visits (
       visit_date,
@@ -78,14 +76,7 @@ class ActionRepository {
       unit,
       bp,
       leadership_name,
-      headcount,
       employees_approached,
-      turnover,
-      absenteeism,
-      he_inefficiency,
-      open_positions,
-      replacement_days,
-      labor_actions,
       warnings,
       enps,
       root_cause,
@@ -95,7 +86,6 @@ class ActionRepository {
       climate_score,
       structure_score,
       customer_score,
-      indicator_score,
       pillar_score,
       final_score,
       classification,
@@ -116,15 +106,7 @@ class ActionRepository {
       NULL,
       NULL,
       NULL,
-      NULL,
-      NULL,
-      NULL,
-      NULL,
-      NULL,
-      NULL,
-      NULL,
-      NULL,
-      NULL,
+      'Visita criada automaticamente pela Ação Pontual.',
       NULL,
       NULL,
       NULL,
