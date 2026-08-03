@@ -52,103 +52,97 @@ class ActionRepository {
   }
 
   async getOrCreateVisit(data) {
-    const visitQuery = `
-      SELECT id
-      FROM visits
-      WHERE cr = $1
-      ORDER BY visit_date DESC NULLS LAST,
-               created_at DESC NULLS LAST
-      LIMIT 1;
-    `;
+  const visitQuery = `
+    SELECT id
+    FROM visits
+    WHERE cr = $1
+    ORDER BY visit_date DESC NULLS LAST,
+             created_at DESC NULLS LAST
+    LIMIT 1;
+  `;
 
-    const visitResult = await pool.query(visitQuery, [data.cr]);
+  const { rows } = await pool.query(visitQuery, [data.cr]);
 
-    if (visitResult.rows.length > 0) {
-      return visitResult.rows[0].id;
-    }
-
-    // Plano de ação exige visita existente
-    if (data.action_type !== "PONTUAL") {
-      throw new Error(
-        "Não existe nenhuma visita cadastrada para este contrato."
-      );
-    }
-
-    // Cria uma visita automática
-    const insertVisit = `
-      INSERT INTO visits (
-        visit_date,
-        pec,
-        cr,
-        client,
-        unit,
-        bp,
-        leadership_name,
-        headcount,
-        employees_approached,
-        turnover,
-        absenteeism,
-        he_inefficiency,
-        open_positions,
-        replacement_days,
-        labor_actions,
-        warnings,
-        enps,
-        root_cause,
-        evidence,
-        overview,
-        leadership_score,
-        climate_score,
-        structure_score,
-        customer_score,
-        indicator_score,
-        pillar_score,
-        final_score,
-        classification,
-        priority,
-        executive_opinion,
-        action_plan
-      )
-      VALUES (
-        CURRENT_DATE,
-        NULL,
-        $1,
-        NULL,
-        NULL,
-        NULL,
-        NULL,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        '[]'::jsonb,
-        NULL,
-        'Visita criada automaticamente pela Ação Pontual.',
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        NULL,
-        NULL,
-        NULL,
-        '[]'::jsonb
-      )
-      RETURNING id;
-    `;
-
-    const { rows } = await pool.query(insertVisit, [data.cr]);
-
+  // Se já existe uma visita para o contrato, utiliza ela
+  if (rows.length > 0) {
     return rows[0].id;
   }
+
+  // Caso não exista, cria uma visita automaticamente
+  const insertVisit = `
+    INSERT INTO visits (
+      visit_date,
+      pec,
+      cr,
+      client,
+      unit,
+      bp,
+      leadership_name,
+      headcount,
+      employees_approached,
+      turnover,
+      absenteeism,
+      he_inefficiency,
+      open_positions,
+      replacement_days,
+      labor_actions,
+      warnings,
+      enps,
+      root_cause,
+      evidence,
+      overview,
+      leadership_score,
+      climate_score,
+      structure_score,
+      customer_score,
+      indicator_score,
+      pillar_score,
+      final_score,
+      classification,
+      priority,
+      executive_opinion,
+      action_plan
+    )
+    VALUES (
+      CURRENT_DATE,
+      NULL,
+      $1,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      '[]'::jsonb
+    )
+    RETURNING id;
+  `;
+
+  const result = await pool.query(insertVisit, [data.cr]);
+
+  return result.rows[0].id;
+}
 
   async create(data) {
     const visitId = await this.getOrCreateVisit(data);
