@@ -26,6 +26,7 @@ class ActionService {
   async create(data) {
     return await actionRepository.create({
       ...data,
+      action_type: data.action_type ?? "PLANO",
       visit_id: data.visit_id || null,
       files: data.files || [],
     });
@@ -40,6 +41,10 @@ class ActionService {
 
     return await actionRepository.update(id, {
       ...data,
+      action_type:
+        data.action_type ??
+        action.action_type ??
+        "PLANO",
       visit_id: data.visit_id || null,
       files:
         data.files !== undefined
