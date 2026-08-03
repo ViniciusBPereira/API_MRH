@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
-import actionService from "./action.service.js";
 import crypto from "crypto";
+import actionService from "./action.service.js";
 
 /* =====================================================
    📄 GET /actions
@@ -87,6 +87,7 @@ export async function createAction(req, res) {
 
     const created = await actionService.create({
       ...req.body,
+      action_type: req.body.action_type ?? "PLANO",
       files,
     });
 
@@ -122,6 +123,7 @@ export async function updateAction(req, res) {
 
     const updated = await actionService.update(id, {
       ...req.body,
+      action_type: req.body.action_type ?? "PLANO",
       ...(files ? { files } : {}),
     });
 
@@ -154,7 +156,6 @@ export async function deleteAction(req, res) {
    📂 GET /actions/:id/files
 ===================================================== */
 export async function getFiles(req, res) {
-  console.log("CHEGOU GET FILES");
   try {
     const { id } = req.params;
 
