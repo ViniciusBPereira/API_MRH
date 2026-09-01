@@ -4,30 +4,32 @@ import crypto from "crypto";
 import actionService from "./action.service.js";
 
 /* =====================================================
-   📄 GET /actions
+   📄 GET /action-plans
 ===================================================== */
-export async function getActions(req, res) {
+export async function getActionPlans(req, res) {
   try {
-    const actions = await actionService.getAll();
+    const actionPlans = await actionService.getAll();
 
-    return res.status(200).json(actions);
+    return res.status(200).json(actionPlans);
   } catch (error) {
+    console.error(error);
+
     return res.status(500).json({
-      message: "Erro ao buscar ações.",
+      message: "Erro ao buscar planos de ação.",
     });
   }
 }
 
 /* =====================================================
-   📄 GET /actions/:id
+   📄 GET /action-plans/:id
 ===================================================== */
-export async function getActionById(req, res) {
+export async function getActionPlanById(req, res) {
   try {
     const { id } = req.params;
 
-    const action = await actionService.getById(id);
+    const actionPlan = await actionService.getById(id);
 
-    return res.status(200).json(action);
+    return res.status(200).json(actionPlan);
   } catch (error) {
     return res.status(404).json({
       message: error.message,
@@ -36,50 +38,35 @@ export async function getActionById(req, res) {
 }
 
 /* =====================================================
-   📄 GET /actions/visit/:visitId
+   📄 GET /action-plans/contract/:contractId
 ===================================================== */
-export async function getActionsByVisit(req, res) {
+export async function getActionPlansByContract(req, res) {
   try {
-    const { visitId } = req.params;
+    const { contractId } = req.params;
 
-    const actions = await actionService.getByVisit(visitId);
+    const actionPlans = await actionService.getByContract(contractId);
 
-    return res.status(200).json(actions);
+    return res.status(200).json(actionPlans);
   } catch (error) {
+    console.error(error);
+
     return res.status(500).json({
-      message: "Erro ao buscar ações.",
+      message: "Erro ao buscar planos de ação.",
     });
   }
 }
 
 /* =====================================================
-   📄 GET /actions/contract/:contract
+   ➕ POST /action-plans
 ===================================================== */
-export async function getActionsByContract(req, res) {
-  try {
-    const { contract } = req.params;
-
-    const actions = await actionService.getByContract(contract);
-
-    return res.status(200).json(actions);
-  } catch (error) {
-    return res.status(500).json({
-      message: "Erro ao buscar ações.",
-    });
-  }
-}
-
-/* =====================================================
-   ➕ POST /actions
-===================================================== */
-export async function createAction(req, res) {
+export async function createActionPlan(req, res) {
   try {
     const files =
       req.files?.map((file) => ({
         id: crypto.randomUUID(),
         name: file.filename,
         originalName: file.originalname,
-        path: `/uploads/actions/${file.filename}`,
+        path: `/uploads/action-plans/${file.filename}`,
         size: file.size,
         mimeType: file.mimetype,
         uploadedAt: new Date().toISOString(),
@@ -87,7 +74,6 @@ export async function createAction(req, res) {
 
     const created = await actionService.create({
       ...req.body,
-      action_type: req.body.action_type ?? "PLANO",
       files,
     });
 
@@ -105,9 +91,9 @@ export async function createAction(req, res) {
 }
 
 /* =====================================================
-   ✏️ PUT /actions/:id
+   ✏️ PUT /action-plans/:id
 ===================================================== */
-export async function updateAction(req, res) {
+export async function updateActionPlan(req, res) {
   try {
     const { id } = req.params;
 
@@ -115,7 +101,7 @@ export async function updateAction(req, res) {
       id: crypto.randomUUID(),
       name: file.filename,
       originalName: file.originalname,
-      path: `/uploads/actions/${file.filename}`,
+      path: `/uploads/action-plans/${file.filename}`,
       size: file.size,
       mimeType: file.mimetype,
       uploadedAt: new Date().toISOString(),
@@ -123,12 +109,13 @@ export async function updateAction(req, res) {
 
     const updated = await actionService.update(id, {
       ...req.body,
-      action_type: req.body.action_type ?? "PLANO",
       ...(files ? { files } : {}),
     });
 
     return res.status(200).json(updated);
   } catch (error) {
+    console.error(error);
+
     return res.status(400).json({
       message: error.message,
     });
@@ -136,9 +123,9 @@ export async function updateAction(req, res) {
 }
 
 /* =====================================================
-   🗑 DELETE /actions/:id
+   🗑 DELETE /action-plans/:id
 ===================================================== */
-export async function deleteAction(req, res) {
+export async function deleteActionPlan(req, res) {
   try {
     const { id } = req.params;
 
@@ -153,7 +140,7 @@ export async function deleteAction(req, res) {
 }
 
 /* =====================================================
-   📂 GET /actions/:id/files
+   📂 GET /action-plans/:id/files
 ===================================================== */
 export async function getFiles(req, res) {
   try {
@@ -170,7 +157,7 @@ export async function getFiles(req, res) {
 }
 
 /* =====================================================
-   📥 GET /actions/:id/files/:fileId
+   📥 GET /action-plans/:id/files/:fileId
 ===================================================== */
 export async function downloadFile(req, res) {
   try {
@@ -195,7 +182,7 @@ export async function downloadFile(req, res) {
 }
 
 /* =====================================================
-   ➕ POST /actions/:id/files
+   ➕ POST /action-plans/:id/files
 ===================================================== */
 export async function uploadFiles(req, res) {
   try {
@@ -212,7 +199,7 @@ export async function uploadFiles(req, res) {
         id: crypto.randomUUID(),
         name: file.filename,
         originalName: file.originalname,
-        path: `/uploads/actions/${file.filename}`,
+        path: `/uploads/action-plans/${file.filename}`,
         size: file.size,
         mimeType: file.mimetype,
         uploadedAt: new Date().toISOString(),
@@ -223,6 +210,8 @@ export async function uploadFiles(req, res) {
 
     return res.status(200).json(files);
   } catch (error) {
+    console.error(error);
+
     return res.status(400).json({
       message: error.message,
     });
@@ -230,7 +219,7 @@ export async function uploadFiles(req, res) {
 }
 
 /* =====================================================
-   🗑 DELETE /actions/:id/files/:fileId
+   🗑 DELETE /action-plans/:id/files/:fileId
 ===================================================== */
 export async function deleteFile(req, res) {
   try {

@@ -1,10 +1,14 @@
 import pool from "../../config/db.js";
 
 class ActionRepository {
+  // ============================================================
+  // LISTAR TODAS AS AÇÕES
+  // ============================================================
+
   async findAll() {
     const sql = `
       SELECT *
-      FROM actions
+      FROM action_plans
       ORDER BY due_date;
     `;
 
@@ -13,225 +17,151 @@ class ActionRepository {
     return rows;
   }
 
+  // ============================================================
+  // BUSCAR AÇÃO POR ID
+  // ============================================================
+
   async findById(id) {
     const sql = `
       SELECT *
-      FROM actions
+      FROM action_plans
       WHERE id = $1;
     `;
 
     const { rows } = await pool.query(sql, [id]);
 
-    return rows[0];
+    return rows[0] || null;
   }
 
-  async findByVisit(visitId) {
+  // ============================================================
+  // BUSCAR AÇÕES POR CONTRATO
+  // ============================================================
+
+  async findByContract(contractId) {
     const sql = `
       SELECT *
-      FROM actions
-      WHERE visit_id = $1
+      FROM action_plans
+      WHERE contract_id = $1
       ORDER BY due_date;
     `;
 
-    const { rows } = await pool.query(sql, [visitId]);
+    const { rows } = await pool.query(sql, [contractId]);
 
     return rows;
   }
 
-  async findByContract(cr) {
-    const sql = `
-      SELECT *
-      FROM actions
-      WHERE cr = $1
-      ORDER BY due_date;
-    `;
-
-    const { rows } = await pool.query(sql, [cr]);
-
-    return rows;
-  }
-
-  async getOrCreateVisit(data) {
-  const visitQuery = `
-    SELECT id
-    FROM visits
-    WHERE cr = $1
-    ORDER BY visit_date DESC NULLS LAST,
-             created_at DESC NULLS LAST
-    LIMIT 1;
-  `;
-
-  const { rows } = await pool.query(visitQuery, [data.cr]);
-
-  if (rows.length) {
-    return rows[0].id;
-  }
-
-  const insertVisit = `
-    INSERT INTO visits (
-      visit_date,
-      pec,
-      cr,
-      client,
-      unit,
-      bp,
-      leadership_name,
-      employees_approached,
-      warnings,
-      enps,
-      root_cause,
-      evidence,
-      overview,
-      leadership_score,
-      climate_score,
-      structure_score,
-      customer_score,
-      pillar_score,
-      final_score,
-      classification,
-      priority,
-      executive_opinion,
-      action_plan
-    )
-    VALUES (
-      CURRENT_DATE,
-      NULL,
-      $1,
-      NULL,
-      NULL,
-      NULL,
-      NULL,
-      NULL,
-      NULL,
-      NULL,
-      NULL,
-      NULL,
-      'Visita criada automaticamente pela Ação Pontual.',
-      NULL,
-      NULL,
-      NULL,
-      NULL,
-      NULL,
-      NULL,
-      NULL,
-      NULL,
-      NULL,
-      '[]'::jsonb
-    )
-    RETURNING id;
-  `;
-
-  const result = await pool.query(insertVisit, [data.cr]);
-
-  return result.rows[0].id;
-}
+  // ============================================================
+  // CRIAR AÇÃO
+  // ============================================================
 
   async create(data) {
-    const visitId = await this.getOrCreateVisit(data);
-
     const sql = `
-      INSERT INTO actions (
-        visit_id,
-        cr,
+      INSERT INTO action_plans (
+        contract_id,
         description,
-        execution,
-        indicators,
-        owner,
+        execution_plan,
+        responsible,
         due_date,
-        stage,
-        action_type,
+        status,
         files
       )
       VALUES (
-        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10
+        $1,
+        $2,
+        $3,
+        $4,
+        $5,
+        $6,
+        $7
       )
       RETURNING *;
     `;
 
     const values = [
-      visitId,
-      data.cr,
+      data.contract_id,
       data.description,
-      data.execution,
-      data.indicators,
-      data.owner,
-      data.due_date,
-      data.stage,
-      data.action_type ?? "PLANO",
-      JSON.stringify(data.files || [])
+      data.execution_plan ?? null,
+      data.responsible ?? null,
+      data.due_date ?? null,
+      data.status ?? "A fazer",
+      JSON.stringify(data.files || []),
     ];
 
     const { rows } = await pool.query(sql, values);
 
-    return rows[0];
+    return rows[0] || null;
   }
 
-  async update(id, data) {
-    const visitId = await this.getOrCreateVisit(data);
+  // ============================================================
+  // ATUALIZAR AÇÃO
+  // ============================================================
 
+  async update(id, data) {
     const current = await this.findById(id);
 
+    if (!current) {
+      return null;
+    }
+
     const sql = `
-      UPDATE actions
+      UPDATE action_plans
       SET
-        visit_id = $1,
-        cr = $2,
-        description = $3,
-        execution = $4,
-        indicators = $5,
-        owner = $6,
-        due_date = $7,
-        stage = $8,
-        action_type = $9,
-        files = $10,
+        contract_id = $1,
+        description = $2,
+        execution_plan = $3,
+        responsible = $4,
+        due_date = $5,
+        status = $6,
+        files = $7,
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = $11
+      WHERE id = $8
       RETURNING *;
     `;
 
     const values = [
-      visitId,
-      data.cr,
-      data.description,
-      data.execution,
-      data.indicators,
-      data.owner,
-      data.due_date,
-      data.stage,
-      data.action_type ?? current.action_type ?? "PLANO",
+      data.contract_id ?? current.contract_id,
+      data.description ?? current.description,
+      data.execution_plan ?? null,
+      data.responsible ?? null,
+      data.due_date ?? null,
+      data.status ?? current.status,
       JSON.stringify(data.files ?? current.files ?? []),
-      id
+      id,
     ];
 
     const { rows } = await pool.query(sql, values);
 
-    return rows[0];
+    return rows[0] || null;
   }
+
+  // ============================================================
+  // EXCLUIR AÇÃO
+  // ============================================================
 
   async delete(id) {
     await pool.query(
       `
-      DELETE FROM actions
+      DELETE FROM action_plans
       WHERE id = $1
       `,
-      [id]
+      [id],
     );
 
     return true;
   }
 
-  // ============================
-  // Arquivos
-  // ============================
+  // ============================================================
+  // ARQUIVOS
+  // ============================================================
 
   async getFiles(actionId) {
     const { rows } = await pool.query(
       `
       SELECT files
-      FROM actions
+      FROM action_plans
       WHERE id = $1
       `,
-      [actionId]
+      [actionId],
     );
 
     if (!rows.length) {
@@ -241,15 +171,23 @@ class ActionRepository {
     return rows[0].files || [];
   }
 
+  // ============================================================
+  // BUSCAR ARQUIVO
+  // ============================================================
+
   async getFile(actionId, fileId) {
     const files = await this.getFiles(actionId);
 
-    return files.find(file => file.id === fileId) || null;
+    return files.find((file) => file.id === fileId) || null;
   }
+
+  // ============================================================
+  // ADICIONAR ARQUIVO
+  // ============================================================
 
   async addFile(actionId, file) {
     const sql = `
-      UPDATE actions
+      UPDATE action_plans
       SET
         files = COALESCE(files, '[]'::jsonb) || $1::jsonb,
         updated_at = CURRENT_TIMESTAMP
@@ -257,54 +195,53 @@ class ActionRepository {
       RETURNING files;
     `;
 
-    const { rows } = await pool.query(sql, [
-      JSON.stringify([file]),
-      actionId
-    ]);
+    const { rows } = await pool.query(sql, [JSON.stringify([file]), actionId]);
 
-    return rows[0].files;
+    return rows[0]?.files || [];
   }
+
+  // ============================================================
+  // REMOVER ARQUIVO
+  // ============================================================
 
   async removeFile(actionId, fileId) {
     const files = await this.getFiles(actionId);
 
-    const updatedFiles = files.filter(file => file.id !== fileId);
+    const updatedFiles = files.filter((file) => file.id !== fileId);
 
     const { rows } = await pool.query(
       `
-      UPDATE actions
+      UPDATE action_plans
       SET
         files = $1::jsonb,
         updated_at = CURRENT_TIMESTAMP
       WHERE id = $2
       RETURNING files;
       `,
-      [
-        JSON.stringify(updatedFiles),
-        actionId
-      ]
+      [JSON.stringify(updatedFiles), actionId],
     );
 
-    return rows[0].files;
+    return rows[0]?.files || [];
   }
+
+  // ============================================================
+  // SUBSTITUIR ARQUIVOS
+  // ============================================================
 
   async replaceFiles(actionId, files) {
     const { rows } = await pool.query(
       `
-      UPDATE actions
+      UPDATE action_plans
       SET
         files = $1::jsonb,
         updated_at = CURRENT_TIMESTAMP
       WHERE id = $2
       RETURNING files;
       `,
-      [
-        JSON.stringify(files),
-        actionId
-      ]
+      [JSON.stringify(files || []), actionId],
     );
 
-    return rows[0].files;
+    return rows[0]?.files || [];
   }
 }
 

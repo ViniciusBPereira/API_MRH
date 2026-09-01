@@ -1,14 +1,14 @@
 import { Router } from "express";
-import { uploadActions } from "./action.upload.js";
+
+import { uploadActionPlans } from "./action.upload.js";
 
 import {
-  getActions,
-  getActionById,
-  getActionsByVisit,
-  getActionsByContract,
-  createAction,
-  updateAction,
-  deleteAction,
+  getActionPlans,
+  getActionPlanById,
+  getActionPlansByContract,
+  createActionPlan,
+  updateActionPlan,
+  deleteActionPlan,
   getFiles,
   uploadFiles,
   downloadFile,
@@ -18,55 +18,45 @@ import {
 const router = Router();
 
 /* =====================================================
-   AÇÕES
+   📄 PLANOS DE AÇÃO
 ===================================================== */
 
-router.get("/", getActions);
+// Listar todos os planos de ação
+router.get("/", getActionPlans);
 
-router.get("/visit/:visitId", getActionsByVisit);
+// Buscar planos de ação por contrato
+router.get("/contract/:contractId", getActionPlansByContract);
 
-router.get("/contract/:contract", getActionsByContract);
+// Buscar plano de ação por ID
+router.get("/:id", getActionPlanById);
 
 /* =====================================================
-   ARQUIVOS
+   📂 ARQUIVOS
 ===================================================== */
 
+// Listar arquivos do plano de ação
 router.get("/:id/files", getFiles);
 
-router.post(
-  "/:id/files",
-  uploadActions.array("files"),
-  uploadFiles
-);
+// Adicionar arquivos ao plano de ação
+router.post("/:id/files", uploadActionPlans.array("files"), uploadFiles);
 
-router.get(
-  "/:id/files/:fileId",
-  downloadFile
-);
+// Baixar arquivo
+router.get("/:id/files/:fileId", downloadFile);
 
-router.delete(
-  "/:id/files/:fileId",
-  deleteFile
-);
+// Remover arquivo
+router.delete("/:id/files/:fileId", deleteFile);
 
 /* =====================================================
-   CRUD
+   ➕ CRUD
 ===================================================== */
 
-router.get("/:id", getActionById);
+// Criar plano de ação
+router.post("/", uploadActionPlans.array("files"), createActionPlan);
 
-router.post(
-  "/",
-  uploadActions.array("files"),
-  createAction
-);
+// Atualizar plano de ação
+router.put("/:id", uploadActionPlans.array("files"), updateActionPlan);
 
-router.put(
-  "/:id",
-  uploadActions.array("files"),
-  updateAction
-);
-
-router.delete("/:id", deleteAction);
+// Excluir plano de ação
+router.delete("/:id", deleteActionPlan);
 
 export default router;

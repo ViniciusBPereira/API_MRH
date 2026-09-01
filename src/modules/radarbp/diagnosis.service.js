@@ -1,4 +1,8 @@
 class DiagnosisService {
+  // ============================================================
+  // CALCULAR DIAGNÓSTICO COMPLETO
+  // ============================================================
+
   calculate(data) {
     const indicator_score = this.calculateIndicatorScore(data);
 
@@ -29,48 +33,78 @@ class DiagnosisService {
     };
   }
 
+  // ============================================================
+  // SCORE DOS INDICADORES
+  // ============================================================
+
   calculateIndicatorScore(data) {
-    const headcount = Number(data.headcount || 0);
-
-    const vacancyRate =
-      headcount > 0 ? (Number(data.open_positions || 0) / headcount) * 100 : 0;
-
-    const warningRate =
-      headcount > 0 ? (Number(data.warnings || 0) / headcount) * 100 : 0;
-
     const weightedScore = [
+      // ----------------------------------------------------------
+      // TURNOVER
+      // Peso: 22%
+      // ----------------------------------------------------------
+
       {
         score: this.scoreAgainstTarget(data.turnover, 3.5, 7, 11),
         weight: 0.22,
       },
+
+      // ----------------------------------------------------------
+      // ABSENTEÍSMO
+      // Peso: 22%
+      // ----------------------------------------------------------
+
       {
         score: this.scoreAgainstTarget(data.absenteeism, 3.5, 7, 11),
         weight: 0.22,
       },
+
+      // ----------------------------------------------------------
+      // H.E. INEFICIÊNCIA
+      // Peso: 20%
+      // ----------------------------------------------------------
+
       {
         score: this.scoreHeInefficiency(data.he_inefficiency),
         weight: 0.2,
       },
+
+      // ----------------------------------------------------------
+      // AÇÕES TRABALHISTAS
+      // Peso: 18%
+      // ----------------------------------------------------------
+
       {
         score: this.scoreLaborActions(data.labor_actions),
         weight: 0.18,
       },
+
+      // ----------------------------------------------------------
+      // TEMPO DE REPOSIÇÃO
+      // Peso: 12%
+      // ----------------------------------------------------------
+
       {
         score: this.scoreAgainstTarget(data.replacement_days, 12, 20, 30),
         weight: 0.12,
       },
-      {
-        score: this.scoreByThreshold(vacancyRate, 2, 5, 9),
-        weight: 0.03,
-      },
-      {
-        score: this.scoreByThreshold(warningRate, 1, 3, 6),
-        weight: 0.03,
-      },
-    ].reduce((total, item) => total + item.score * item.weight, 0);
 
-    return Math.round(weightedScore);
+      // ----------------------------------------------------------
+      // TOTAL = 100%
+      // ----------------------------------------------------------
+    ];
+
+    const total = weightedScore.reduce(
+      (sum, item) => sum + item.score * item.weight,
+      0,
+    );
+
+    return Math.round(total);
   }
+
+  // ============================================================
+  // SCORE DOS PILARES
+  // ============================================================
 
   calculatePillarScore(data) {
     const pillars = [
@@ -85,63 +119,95 @@ class DiagnosisService {
     );
   }
 
+  // ============================================================
+  // SCORE POR META
+  // ============================================================
+
   scoreAgainstTarget(value, target, attention, critical) {
     const score = Number(value || 0);
 
-    if (score <= target) return 100;
+    if (score <= target) {
+      return 100;
+    }
 
-    if (score <= attention) return 75;
+    if (score <= attention) {
+      return 75;
+    }
 
-    if (score <= critical) return 45;
+    if (score <= critical) {
+      return 45;
+    }
 
     return 20;
   }
 
-  scoreByThreshold(value, good, attention, critical) {
-    const score = Number(value || 0);
-
-    if (score <= good) return 95;
-
-    if (score <= attention) return 78;
-
-    if (score <= critical) return 55;
-
-    return 30;
-  }
+  // ============================================================
+  // SCORE H.E. INEFICIÊNCIA
+  // ============================================================
 
   scoreHeInefficiency(value) {
     const score = Number(value || 0);
 
-    if (score <= 0) return 100;
+    if (score <= 0) {
+      return 100;
+    }
 
-    if (score <= 1000) return 75;
+    if (score <= 1000) {
+      return 75;
+    }
 
-    if (score <= 5000) return 45;
+    if (score <= 5000) {
+      return 45;
+    }
 
     return 20;
   }
 
+  // ============================================================
+  // SCORE AÇÕES TRABALHISTAS
+  // ============================================================
+
   scoreLaborActions(value) {
     const score = Number(value || 0);
 
-    if (score === 0) return 100;
+    if (score === 0) {
+      return 100;
+    }
 
-    if (score === 1) return 55;
+    if (score === 1) {
+      return 55;
+    }
 
-    if (score === 2) return 35;
+    if (score === 2) {
+      return 35;
+    }
 
     return 15;
   }
 
+  // ============================================================
+  // CLASSIFICAÇÃO
+  // ============================================================
+
   classifyScore(score) {
-    if (score >= 85) return "Referência";
+    if (score >= 85) {
+      return "Referência";
+    }
 
-    if (score >= 70) return "Estável";
+    if (score >= 70) {
+      return "Estável";
+    }
 
-    if (score >= 50) return "Alerta";
+    if (score >= 50) {
+      return "Alerta";
+    }
 
     return "Crítico";
   }
+
+  // ============================================================
+  // PRIORIZAÇÃO
+  // ============================================================
 
   prioritize(classification, score) {
     if (classification === "Crítico" || score < 45) {
@@ -159,12 +225,16 @@ class DiagnosisService {
     return "Monitoramento";
   }
 
+  // ============================================================
+  // OPINIÃO EXECUTIVA
+  // ============================================================
+
   generateOpinion(data, score, classification, priority) {
-  return `
-PEC: ${data.pec}
+    const rootCauses = Array.isArray(data.root_cause)
+      ? data.root_cause.join(", ")
+      : data.root_cause || "Não informada";
 
-CR: ${data.cr}
-
+    return `
 Score Final: ${score}
 
 Classificação:
@@ -174,13 +244,9 @@ Priorização:
 ${priority}
 
 Causa(s) raiz:
-${
-  Array.isArray(data.root_cause)
-    ? data.root_cause.join(", ")
-    : data.root_cause || "Não informada"
-}
+${rootCauses}
 `.trim();
-}
+  }
 }
 
 export default new DiagnosisService();

@@ -3,23 +3,34 @@ import path from "path";
 import fs from "fs";
 import crypto from "crypto";
 
-const pasta = "uploads/actions";
+/* =====================================================
+   📂 PASTA DE UPLOADS
+===================================================== */
+
+const pasta = "uploads/action-plans";
 
 fs.mkdirSync(pasta, { recursive: true });
 
-const storage = multer.diskStorage({
-    destination(req, file, cb) {
-        cb(null, pasta);
-    },
-    filename(req, file, cb) {
-        const nome =
-            crypto.randomUUID() +
-            path.extname(file.originalname);
+/* =====================================================
+   💾 STORAGE
+===================================================== */
 
-        cb(null, nome);
-    }
+const storage = multer.diskStorage({
+  destination(req, file, cb) {
+    cb(null, pasta);
+  },
+
+  filename(req, file, cb) {
+    const nome = crypto.randomUUID() + path.extname(file.originalname);
+
+    cb(null, nome);
+  },
 });
 
-export const uploadActions = multer({
-    storage
+/* =====================================================
+   📤 UPLOAD
+===================================================== */
+
+export const uploadActionPlans = multer({
+  storage,
 });

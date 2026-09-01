@@ -1,12 +1,35 @@
 import pool from "../../config/db.js";
 
 class TrackingRepository {
+  // ============================================================
+  // LISTAR TODOS
+  // ============================================================
 
   async findAll() {
     const sql = `
-      SELECT *
+      SELECT
+        id,
+        contract_id,
+
+        TO_CHAR(reference_month, 'YYYY-MM')
+          AS reference_month,
+
+        turnover,
+        absenteeism,
+        he_inefficiency,
+        open_positions,
+        replacement_days,
+        headcount,
+        labor_actions,
+        notes,
+        created_at,
+        updated_at
+
       FROM tracking
-      ORDER BY month DESC;
+
+      ORDER BY
+        reference_month DESC,
+        created_at DESC;
     `;
 
     const { rows } = await pool.query(sql);
@@ -14,82 +37,197 @@ class TrackingRepository {
     return rows;
   }
 
+  // ============================================================
+  // BUSCAR POR ID
+  // ============================================================
+
   async findById(id) {
     const sql = `
-      SELECT *
+      SELECT
+        id,
+        contract_id,
+
+        TO_CHAR(reference_month, 'YYYY-MM')
+          AS reference_month,
+
+        turnover,
+        absenteeism,
+        he_inefficiency,
+        open_positions,
+        replacement_days,
+        headcount,
+        labor_actions,
+        notes,
+        created_at,
+        updated_at
+
       FROM tracking
+
       WHERE id = $1;
     `;
 
     const { rows } = await pool.query(sql, [id]);
 
-    return rows[0];
+    return rows[0] || null;
   }
 
-  async findByContract(cr) {
+  // ============================================================
+  // BUSCAR POR CONTRATO
+  // ============================================================
+
+  async findByContract(contractId) {
     const sql = `
-      SELECT *
+      SELECT
+        id,
+        contract_id,
+
+        TO_CHAR(reference_month, 'YYYY-MM')
+          AS reference_month,
+
+        turnover,
+        absenteeism,
+        he_inefficiency,
+        open_positions,
+        replacement_days,
+        headcount,
+        labor_actions,
+        notes,
+        created_at,
+        updated_at
+
       FROM tracking
-      WHERE cr = $1
-      ORDER BY month DESC;
+
+      WHERE contract_id = $1
+
+      ORDER BY
+        reference_month DESC,
+        created_at DESC;
     `;
 
-    const { rows } = await pool.query(sql, [cr]);
+    const { rows } = await pool.query(sql, [contractId]);
 
     return rows;
   }
 
-  /**
-   * Dados utilizados na tela de edição.
-   * Retorna informações do acompanhamento + visita.
-   */
+  // ============================================================
+  // DADOS PARA EDIÇÃO
+  //
+  // Tracking + visita correspondente
+  // ============================================================
+
   async findEditData(id) {
     const sql = `
       SELECT
-    t.id AS tracking_id,
-    t.month,
-    t.notes,
-    v.*
+        t.id AS tracking_id,
+
+        t.contract_id,
+
+        TO_CHAR(
+          t.reference_month,
+          'YYYY-MM'
+        ) AS reference_month,
+
+        t.turnover AS tracking_turnover,
+        t.absenteeism AS tracking_absenteeism,
+        t.he_inefficiency AS tracking_he_inefficiency,
+        t.open_positions AS tracking_open_positions,
+        t.replacement_days AS tracking_replacement_days,
+        t.headcount AS tracking_headcount,
+        t.labor_actions AS tracking_labor_actions,
+        t.notes AS tracking_notes,
+
+        v.*
+
       FROM tracking t
-      INNER JOIN visits v
-        ON v.cr = t.cr
-       AND TO_CHAR(v.visit_date,'YYYY-MM') = t.month
-      WHERE t.id = $1;
+
+      LEFT JOIN visits v
+        ON v.contract_id = t.contract_id
+
+       AND TO_CHAR(
+         v.visit_date,
+         'YYYY-MM'
+       ) = TO_CHAR(
+         t.reference_month,
+         'YYYY-MM'
+       )
+
+      WHERE t.id = $1
+
+      ORDER BY
+        v.visit_date DESC NULLS LAST,
+        v.created_at DESC NULLS LAST
+
+      LIMIT 1;
     `;
 
     const { rows } = await pool.query(sql, [id]);
 
-    return rows[0];
+    return rows[0] || null;
   }
+
+  // ============================================================
+  // CRIAR
+  // ============================================================
 
   async create(data) {
     const sql = `
       INSERT INTO tracking (
-        month,
-        cr,
+        contract_id,
+        reference_month,
         turnover,
         absenteeism,
         he_inefficiency,
-        labor_actions,
+        open_positions,
         replacement_days,
         headcount,
+        labor_actions,
         notes
       )
+
       VALUES (
-        $1,$2,$3,$4,$5,$6,$7,$8,$9
+        $1,
+        $2,
+        $3,
+        $4,
+        $5,
+        $6,
+        $7,
+        $8,
+        $9,
+        $10
       )
-      RETURNING *;
+
+      RETURNING
+        id,
+        contract_id,
+
+        TO_CHAR(
+          reference_month,
+          'YYYY-MM'
+        ) AS reference_month,
+
+        turnover,
+        absenteeism,
+        he_inefficiency,
+        open_positions,
+        replacement_days,
+        headcount,
+        labor_actions,
+        notes,
+        created_at,
+        updated_at;
     `;
 
     const values = [
-      data.month,
-      data.cr,
+      data.contract_id,
+      data.reference_month,
       data.turnover,
       data.absenteeism,
       data.he_inefficiency,
-      data.labor_actions,
+      data.open_positions,
       data.replacement_days,
       data.headcount,
+      data.labor_actions,
       data.notes,
     ];
 
@@ -98,155 +236,232 @@ class TrackingRepository {
     return rows[0];
   }
 
+  // ============================================================
+  // ATUALIZAR
+  // ============================================================
+
   async update(id, data) {
     const sql = `
       UPDATE tracking
+
       SET
-        month = $1,
-        cr = $2,
+        contract_id = $1,
+        reference_month = $2,
         turnover = $3,
         absenteeism = $4,
         he_inefficiency = $5,
-        labor_actions = $6,
+        open_positions = $6,
         replacement_days = $7,
         headcount = $8,
-        notes = $9
-      WHERE id = $10
-      RETURNING *;
+        labor_actions = $9,
+        notes = $10,
+        updated_at = CURRENT_TIMESTAMP
+
+      WHERE id = $11
+
+      RETURNING
+        id,
+        contract_id,
+
+        TO_CHAR(
+          reference_month,
+          'YYYY-MM'
+        ) AS reference_month,
+
+        turnover,
+        absenteeism,
+        he_inefficiency,
+        open_positions,
+        replacement_days,
+        headcount,
+        labor_actions,
+        notes,
+        created_at,
+        updated_at;
     `;
 
     const values = [
-      data.month,
-      data.cr,
+      data.contract_id,
+      data.reference_month,
       data.turnover,
       data.absenteeism,
       data.he_inefficiency,
-      data.labor_actions,
+      data.open_positions,
       data.replacement_days,
       data.headcount,
+      data.labor_actions,
       data.notes,
       id,
     ];
 
     const { rows } = await pool.query(sql, values);
 
-    return rows[0];
+    return rows[0] || null;
   }
 
-  /**
-   * Atualiza Tracking e Visita em uma única transação.
-   */
+  // ============================================================
+  // ATUALIZAR TRACKING + VISITA
+  // ============================================================
+
   async updateEdit(id, data) {
     const client = await pool.connect();
 
     try {
       await client.query("BEGIN");
-      const tracking = await client.query(
-  `
-  SELECT *
-  FROM tracking
-  WHERE id = $1
-  `,
-  [id]
-);
 
-const oldTracking = tracking.rows[0];
+      // ========================================================
+      // BUSCAR TRACKING ATUAL
+      // ========================================================
 
-      // Atualiza Tracking
+      const trackingResult = await client.query(
+        `
+          SELECT *
+          FROM tracking
+          WHERE id = $1
+          FOR UPDATE;
+          `,
+        [id],
+      );
+
+      const oldTracking = trackingResult.rows[0];
+
+      if (!oldTracking) {
+        throw new Error("Tracking não encontrado.");
+      }
+
+      // ========================================================
+      // ATUALIZAR TRACKING
+      // ========================================================
+
       await client.query(
         `
         UPDATE tracking
+
         SET
-          month = $1,
-          cr = $2,
+          contract_id = $1,
+          reference_month = $2,
           turnover = $3,
           absenteeism = $4,
           he_inefficiency = $5,
-          labor_actions = $6,
+          open_positions = $6,
           replacement_days = $7,
           headcount = $8,
-          notes = $9
-        WHERE id = $10
+          labor_actions = $9,
+          notes = $10,
+          updated_at = CURRENT_TIMESTAMP
+
+        WHERE id = $11;
         `,
         [
-          data.visit_date.substring(0, 7),
-          data.cr,
+          data.contract_id,
+          data.reference_month,
           data.turnover,
           data.absenteeism,
           data.he_inefficiency,
-          data.labor_actions,
+          data.open_positions,
           data.replacement_days,
           data.headcount,
-          data.overview,
+          data.labor_actions,
+          data.notes,
           id,
-        ]
+        ],
       );
 
-      // Atualiza Visita
+      // ========================================================
+      // ATUALIZAR VISITA
+      //
+      // Procura pela visita do contrato antigo
+      // e do mesmo mês.
+      // ========================================================
+
       await client.query(
-  `
-  UPDATE visits
-  SET
-    visit_date = $1,
-    cr = $2,
-    client = $3,
-    unit = $4,
-    bp = $5,
-    leadership_name = $6,
-    employees_approached = $7,
-    warnings = $8,
-    enps = $9,
-    root_cause = $10,
-    evidence = $11,
-    overview = $12,
-    leadership_score = $13,
-    climate_score = $14,
-    structure_score = $15,
-    customer_score = $16,
-    pillar_score = $17,
-    final_score = $18,
-    classification = $19,
-    priority = $20,
-    executive_opinion = $21,
-    action_plan = $22,
-    pec = $23,
-    updated_at = CURRENT_TIMESTAMP
-  WHERE cr = $24
-    AND TO_CHAR(visit_date, 'YYYY-MM') = $25
-  `,
-  [
-    data.visit_date,
-    data.cr,
-    data.client,
-    data.unit,
-    data.bp,
-    data.leadership_name,
-    data.employees_approached,
-    data.warnings,
-    data.enps,
-    data.root_cause,
-    data.evidence,
-    data.overview,
-    data.leadership_score,
-    data.climate_score,
-    data.structure_score,
-    data.customer_score,
-    data.pillar_score,
-    data.final_score,
-    data.classification,
-    data.priority,
-    data.executive_opinion,
-    JSON.stringify(data.action_plan),
-    data.pec,
-    data.cr,
-    oldTracking.month,
-  ]
-);
+        `
+        UPDATE visits
+
+        SET
+          visit_date = $1,
+          employees_approached = $2,
+
+          turnover = $3,
+          absenteeism = $4,
+          he_inefficiency = $5,
+          open_positions = $6,
+          replacement_days = $7,
+
+          labor_actions = $8,
+          warnings = $9,
+          enps = $10,
+
+          root_cause = $11,
+          evidence = $12,
+          overview = $13,
+
+          leadership_score = $14,
+          climate_score = $15,
+          structure_score = $16,
+          customer_score = $17,
+
+          indicator_score = $18,
+          pillar_score = $19,
+          final_score = $20,
+          classification = $21,
+          priority = $22,
+          executive_opinion = $23,
+
+          diagnosis = $24,
+
+          updated_at = CURRENT_TIMESTAMP
+
+        WHERE contract_id = $25
+
+          AND TO_CHAR(
+            visit_date,
+            'YYYY-MM'
+          ) = TO_CHAR(
+            $26::date,
+            'YYYY-MM'
+          );
+        `,
+        [
+          data.visit_date,
+          data.employees_approached,
+
+          data.turnover,
+          data.absenteeism,
+          data.he_inefficiency,
+          data.open_positions,
+          data.replacement_days,
+
+          data.labor_actions,
+          data.warnings,
+          data.enps,
+
+          data.root_cause,
+          data.evidence,
+          data.overview,
+
+          data.leadership_score,
+          data.climate_score,
+          data.structure_score,
+          data.customer_score,
+
+          data.indicator_score,
+          data.pillar_score,
+          data.final_score,
+          data.classification,
+          data.priority,
+          data.executive_opinion,
+
+          data.diagnosis,
+
+          oldTracking.contract_id,
+          oldTracking.reference_month,
+        ],
+      );
 
       await client.query("COMMIT");
 
       return await this.findEditData(id);
-
     } catch (err) {
       await client.query("ROLLBACK");
       throw err;
@@ -255,13 +470,20 @@ const oldTracking = tracking.rows[0];
     }
   }
 
+  // ============================================================
+  // EXCLUIR
+  // ============================================================
+
   async delete(id) {
-    await pool.query(
-      `DELETE FROM tracking WHERE id = $1`,
-      [id]
+    const result = await pool.query(
+      `
+      DELETE FROM tracking
+      WHERE id = $1;
+      `,
+      [id],
     );
 
-    return true;
+    return result.rowCount > 0;
   }
 }
 
