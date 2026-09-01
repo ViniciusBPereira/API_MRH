@@ -14,15 +14,17 @@ class ActionService {
   // ============================================================
 
   async getById(id) {
+    if (!id) {
+      throw new Error("ID da ação é obrigatório.");
+    }
+
     const action = await actionRepository.findById(id);
 
-    ```
-if (!action) {
-  throw new Error("Ação não encontrada.");
-}
+    if (!action) {
+      throw new Error("Ação não encontrada.");
+    }
 
-return action;
-```;
+    return action;
   }
 
   // ============================================================
@@ -34,9 +36,7 @@ return action;
       throw new Error("Contrato é obrigatório.");
     }
 
-    ```
-return await actionRepository.findByContract(contractId);
-```;
+    return await actionRepository.findByContract(contractId);
   }
 
   // ============================================================
@@ -44,29 +44,61 @@ return await actionRepository.findByContract(contractId);
   // ============================================================
 
   async create(data) {
-    if (!data) {
+    if (!data || typeof data !== "object") {
       throw new Error("Dados da ação são obrigatórios.");
     }
 
-    ```
-if (!data.contract_id) {
-  throw new Error("Contrato é obrigatório.");
-}
+    const contractId = data.contract_id;
+    const description = data.description;
 
-if (!data.description) {
-  throw new Error("Descrição da ação é obrigatória.");
-}
+    if (!contractId) {
+      throw new Error("Contrato é obrigatório.");
+    }
 
-return await actionRepository.create({
-  ...data,
-  contract_id: data.contract_id,
-  execution_plan: data.execution_plan ?? null,
-  responsible: data.responsible ?? null,
-  due_date: data.due_date ?? null,
-  status: data.status ?? "A fazer",
-  files: data.files || [],
-});
-```;
+    if (!description || !String(description).trim()) {
+      throw new Error("Descrição da ação é obrigatória.");
+    }
+
+    const actionData = {
+      contract_id: contractId,
+      description: String(description).trim(),
+
+      execution_plan:
+        data.execution_plan !== undefined &&
+        data.execution_plan !== null
+          ? String(data.execution_plan)
+          : null,
+
+      indicators:
+        data.indicators !== undefined &&
+        data.indicators !== null
+          ? String(data.indicators)
+          : null,
+
+      responsible:
+        data.responsible !== undefined &&
+        data.responsible !== null
+          ? String(data.responsible)
+          : null,
+
+      due_date:
+        data.due_date !== undefined &&
+        data.due_date !== ""
+          ? data.due_date
+          : null,
+
+      status:
+        data.status !== undefined &&
+        data.status !== ""
+          ? data.status
+          : "A fazer",
+
+      files: Array.isArray(data.files)
+        ? data.files
+        : [],
+    };
+
+    return await actionRepository.create(actionData);
   }
 
   // ============================================================
@@ -74,34 +106,78 @@ return await actionRepository.create({
   // ============================================================
 
   async update(id, data) {
-    const action = await actionRepository.findById(id);
+    if (!id) {
+      throw new Error("ID da ação é obrigatório.");
+    }
 
-    ```
-if (!action) {
-  throw new Error("Ação não encontrada.");
-}
+    if (!data || typeof data !== "object") {
+      throw new Error("Dados da ação são obrigatórios.");
+    }
 
-if (!data.contract_id) {
-  throw new Error("Contrato é obrigatório.");
-}
+    const current = await actionRepository.findById(id);
 
-if (!data.description) {
-  throw new Error("Descrição da ação é obrigatória.");
-}
+    if (!current) {
+      throw new Error("Ação não encontrada.");
+    }
 
-return await actionRepository.update(id, {
-  ...data,
-  contract_id: data.contract_id,
-  execution_plan: data.execution_plan ?? null,
-  responsible: data.responsible ?? null,
-  due_date: data.due_date ?? null,
-  status: data.status ?? action.status ?? "A fazer",
-  files:
-    data.files !== undefined
-      ? data.files
-      : action.files || [],
-});
-```;
+    const contractId =
+      data.contract_id !== undefined
+        ? data.contract_id
+        : current.contract_id;
+
+    const description =
+      data.description !== undefined
+        ? data.description
+        : current.description;
+
+    if (!contractId) {
+      throw new Error("Contrato é obrigatório.");
+    }
+
+    if (!description || !String(description).trim()) {
+      throw new Error("Descrição da ação é obrigatória.");
+    }
+
+    const actionData = {
+      contract_id: contractId,
+
+      description: String(description).trim(),
+
+      execution_plan:
+        data.execution_plan !== undefined
+          ? data.execution_plan
+          : current.execution_plan,
+
+      indicators:
+        data.indicators !== undefined
+          ? data.indicators
+          : current.indicators,
+
+      responsible:
+        data.responsible !== undefined
+          ? data.responsible
+          : current.responsible,
+
+      due_date:
+        data.due_date !== undefined
+          ? data.due_date || null
+          : current.due_date,
+
+      status:
+        data.status !== undefined
+          ? data.status
+          : current.status,
+
+      files:
+        data.files !== undefined
+          ? data.files
+          : current.files || [],
+    };
+
+    return await actionRepository.update(
+      id,
+      actionData
+    );
   }
 
   // ============================================================
@@ -109,19 +185,21 @@ return await actionRepository.update(id, {
   // ============================================================
 
   async delete(id) {
+    if (!id) {
+      throw new Error("ID da ação é obrigatório.");
+    }
+
     const action = await actionRepository.findById(id);
 
-    ```
-if (!action) {
-  throw new Error("Ação não encontrada.");
-}
+    if (!action) {
+      throw new Error("Ação não encontrada.");
+    }
 
-await actionRepository.delete(id);
+    await actionRepository.delete(id);
 
-return {
-  message: "Ação removida com sucesso.",
-};
-```;
+    return {
+      message: "Ação removida com sucesso.",
+    };
   }
 
   // ============================================================
@@ -129,15 +207,17 @@ return {
   // ============================================================
 
   async getFiles(actionId) {
+    if (!actionId) {
+      throw new Error("ID da ação é obrigatório.");
+    }
+
     const action = await actionRepository.findById(actionId);
 
-    ```
-if (!action) {
-  throw new Error("Ação não encontrada.");
-}
+    if (!action) {
+      throw new Error("Ação não encontrada.");
+    }
 
-return await actionRepository.getFiles(actionId);
-```;
+    return await actionRepository.getFiles(actionId);
   }
 
   // ============================================================
@@ -145,24 +225,30 @@ return await actionRepository.getFiles(actionId);
   // ============================================================
 
   async getFile(actionId, fileId) {
+    if (!actionId) {
+      throw new Error("ID da ação é obrigatório.");
+    }
+
+    if (!fileId) {
+      throw new Error("ID do arquivo é obrigatório.");
+    }
+
     const action = await actionRepository.findById(actionId);
 
-    ```
-if (!action) {
-  throw new Error("Ação não encontrada.");
-}
+    if (!action) {
+      throw new Error("Ação não encontrada.");
+    }
 
-const file = await actionRepository.getFile(
-  actionId,
-  fileId,
-);
+    const file = await actionRepository.getFile(
+      actionId,
+      fileId
+    );
 
-if (!file) {
-  throw new Error("Arquivo não encontrado.");
-}
+    if (!file) {
+      throw new Error("Arquivo não encontrado.");
+    }
 
-return file;
-```;
+    return file;
   }
 
   // ============================================================
@@ -170,15 +256,24 @@ return file;
   // ============================================================
 
   async addFile(actionId, file) {
+    if (!actionId) {
+      throw new Error("ID da ação é obrigatório.");
+    }
+
+    if (!file) {
+      throw new Error("Arquivo é obrigatório.");
+    }
+
     const action = await actionRepository.findById(actionId);
 
-    ```
-if (!action) {
-  throw new Error("Ação não encontrada.");
-}
+    if (!action) {
+      throw new Error("Ação não encontrada.");
+    }
 
-return await actionRepository.addFile(actionId, file);
-```;
+    return await actionRepository.addFile(
+      actionId,
+      file
+    );
   }
 
   // ============================================================
@@ -186,26 +281,35 @@ return await actionRepository.addFile(actionId, file);
   // ============================================================
 
   async removeFile(actionId, fileId) {
+    if (!actionId) {
+      throw new Error("ID da ação é obrigatório.");
+    }
+
+    if (!fileId) {
+      throw new Error("ID do arquivo é obrigatório.");
+    }
+
     const action = await actionRepository.findById(actionId);
 
-    ```
-if (!action) {
-  throw new Error("Ação não encontrada.");
-}
+    if (!action) {
+      throw new Error("Ação não encontrada.");
+    }
 
-const file = await actionRepository.getFile(
-  actionId,
-  fileId,
-);
+    const file = await actionRepository.getFile(
+      actionId,
+      fileId
+    );
 
-if (!file) {
-  throw new Error("Arquivo não encontrado.");
-}
+    if (!file) {
+      throw new Error("Arquivo não encontrado.");
+    }
 
-await actionRepository.removeFile(actionId, fileId);
+    await actionRepository.removeFile(
+      actionId,
+      fileId
+    );
 
-return file;
-```;
+    return file;
   }
 
   // ============================================================
@@ -213,18 +317,20 @@ return file;
   // ============================================================
 
   async replaceFiles(actionId, files) {
+    if (!actionId) {
+      throw new Error("ID da ação é obrigatório.");
+    }
+
     const action = await actionRepository.findById(actionId);
 
-    ```
-if (!action) {
-  throw new Error("Ação não encontrada.");
-}
+    if (!action) {
+      throw new Error("Ação não encontrada.");
+    }
 
-return await actionRepository.replaceFiles(
-  actionId,
-  files,
-);
-```;
+    return await actionRepository.replaceFiles(
+      actionId,
+      files
+    );
   }
 }
 
