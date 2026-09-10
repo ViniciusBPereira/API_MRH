@@ -1,3 +1,4 @@
+﻿import "./modules/emae/emae.push.monitor.js";
 import express from "express";
 import cors from "cors";
 import path from "path";
@@ -8,7 +9,7 @@ import "./cron/syncRondasCorpJob.js";
 const app = express();
 
 /* ------------------------------------------------------
-   🌍 CORS
+   ðŸŒ CORS
 ------------------------------------------------------ */
 app.use(
   cors({
@@ -18,15 +19,15 @@ app.use(
 );
 
 /* ------------------------------------------------------
-   📦 JSON PARSER
+   ðŸ“¦ JSON PARSER
 ------------------------------------------------------ */
 app.use(express.json());
 
 /* ------------------------------------------------------
-   ❗ TRATAR JSON INVÁLIDO
+   â— TRATAR JSON INVÃLIDO
 ------------------------------------------------------ */
 app.use((err, req, res, next) => {
-  // 🔒 Só valida JSON em métodos que realmente usam body
+  // ðŸ”’ SÃ³ valida JSON em mÃ©todos que realmente usam body
   const methodsWithBody = ["POST", "PUT", "PATCH"];
 
   if (
@@ -37,7 +38,7 @@ app.use((err, req, res, next) => {
   ) {
     return res.status(400).json({
       sucesso: false,
-      mensagem: "JSON inválido: verifique a sintaxe.",
+      mensagem: "JSON invÃ¡lido: verifique a sintaxe.",
     });
   }
 
@@ -49,15 +50,16 @@ const uploadsPath = path.resolve("uploads"); // raiz de uploads
 app.use("/uploads", express.static(uploadsPath));
 
 /* ------------------------------------------------------
-   🔀 ROTAS API
+   ðŸ”€ ROTAS API
 ------------------------------------------------------ */
 app.use("/api", routes);
 
 app.use((req, res) => {
   return res.status(404).json({
     sucesso: false,
-    mensagem: "Rota não encontrada.",
+    mensagem: "Rota nÃ£o encontrada.",
   });
 });
 
 export default app;
+

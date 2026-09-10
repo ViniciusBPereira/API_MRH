@@ -1,4 +1,4 @@
-import express from "express";
+﻿import express from "express";
 
 const router = express.Router();
 
@@ -21,6 +21,10 @@ import fichaRoutes from "../modules/fichas/ficha.routes.js";
 import candidatosRegistradosRoutes from "../modules/candidatosregistrados/candidatosregistrados.routes.js";
 
 import checkDocsRoutes from "../modules/checkdocs/checkdocs.routes.js";
+
+/* ================= EMAE ================= */
+
+import emaeRoutes from "../modules/emae/emae.routes.js";
 
 /* ================= CONTRATOS ================= */
 
@@ -49,21 +53,25 @@ import { authMiddleware } from "../modules/middlewares/auth.middleware.js";
 import { authRondasCorp } from "../modules/rondasCorp/login/authRondasCorp.middleware.js";
 
 /* =======================================================
-   🔓 ROTAS PÚBLICAS
+   ROTAS PUBLICAS
 ======================================================= */
 
 router.use("/auth", authRoutes);
 
 router.use("/rondas", rondasLoginRoutes);
 
+/* ================= EMAE PÚBLICO ================= */
+
+router.use("/emae", emaeRoutes);
+
 /* =======================================================
-   🛡️ RONDAS CORP
+   ROTAS CORP
 ======================================================= */
 
 router.use("/rondas", authRondasCorp, rondasRoutes);
 
 /* =======================================================
-   🔒 RESTO PROTEGIDO
+   ROTAS PROTEGIDO
 ======================================================= */
 
 router.use(authMiddleware);
@@ -103,3 +111,5 @@ router.use("/actions", actionRoutes);
 router.use("/punctual-actions", punctualActionRoutes);
 
 export default router;
+
+
