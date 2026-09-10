@@ -4,11 +4,6 @@ class EmaeRepository {
   // ============================================================
   // PONTOS DE RONDA / GEOLOCALIZAÇÃO
   // ============================================================
-  // Calcula uma coordenada fixa para cada ponto utilizando
-  // a média das coordenadas históricas registradas no GPSVISTA.
-  //
-  // O DISTINCT reduz duplicidades idênticas vindas da execução.
-  // ============================================================
   async getMapPoints(cr) {
     const sql = `
       WITH coordenadas AS (
@@ -57,35 +52,51 @@ class EmaeRepository {
 
       FROM coordenadas
 
-      GROUP BY
-        ponto
+      GROUP BY ponto
 
-      ORDER BY
-        ponto;
+      ORDER BY ponto;
     `;
 
-    const { rows } = await corpPool.query(
-      sql,
-      [cr],
-    );
+    const { rows } =
+      await corpPool.query(
+        sql,
+        [cr],
+      );
 
     return rows;
   }
 
   // ============================================================
-  // JANELAS DE RONDA DISPONÍVEIS
+  // JANELAS DE RONDA
   // ============================================================
-  // Retorna somente rondas que já foram disponibilizadas.
   //
-  // As janelas são obtidas diretamente do GPSVISTA, evitando
-  // assumir que todas as rondas começam em horas cheias.
+  // IMPORTANTE:
+  //
+  // disponibilizacao_chave:
+  //   permanece exatamente como está no banco para localizar
+  //   novamente as tarefas daquela janela.
+  //
+  // disponibilizacao / prazo:
+  //   são convertidos de America/Sao_Paulo para TIMESTAMPTZ.
+  //   Assim Node + navegador não deslocam -3 horas em produção.
   // ============================================================
   async getRoundWindows(cr) {
     const sql = `
       SELECT DISTINCT
         tarefa.nome,
-        tarefa.disponibilizacao,
+
+        TO_CHAR(
+          tarefa.disponibilizacao,
+          'YYYY-MM-DD HH24:MI:SS'
+        ) AS disponibilizacao_chave,
+
+        tarefa.disponibilizacao
+          AT TIME ZONE 'America/Sao_Paulo'
+          AS disponibilizacao,
+
         tarefa.prazo
+          AT TIME ZONE 'America/Sao_Paulo'
+          AS prazo
 
       FROM dbo.tarefa
 
@@ -103,19 +114,20 @@ class EmaeRepository {
           ) - INTERVAL '24 hours'
 
       ORDER BY
-        tarefa.disponibilizacao DESC;
+        disponibilizacao DESC;
     `;
 
-    const { rows } = await corpPool.query(
-      sql,
-      [cr],
-    );
+    const { rows } =
+      await corpPool.query(
+        sql,
+        [cr],
+      );
 
     return rows;
   }
 
   // ============================================================
-  // TAREFAS DE UMA JANELA ESPECÍFICA DE RONDA
+  // TAREFAS DA JANELA DE RONDA
   // ============================================================
   async getRounds(
     cr,
@@ -127,9 +139,18 @@ class EmaeRepository {
         tarefa.status,
         tarefa.numero,
         tarefa.nome,
-        tarefa.disponibilizacao,
-        tarefa.prazo,
-        tarefa.terminoreal,
+
+        tarefa.disponibilizacao
+          AT TIME ZONE 'America/Sao_Paulo'
+          AS disponibilizacao,
+
+        tarefa.prazo
+          AT TIME ZONE 'America/Sao_Paulo'
+          AS prazo,
+
+        tarefa.terminoreal
+          AT TIME ZONE 'America/Sao_Paulo'
+          AS terminoreal,
 
         TRIM(
           tarefa.estruturadescricao
@@ -160,13 +181,14 @@ class EmaeRepository {
         tarefa.estruturadescricao;
     `;
 
-    const { rows } = await corpPool.query(
-      sql,
-      [
-        cr,
-        disponibilizacao,
-      ],
-    );
+    const { rows } =
+      await corpPool.query(
+        sql,
+        [
+          cr,
+          disponibilizacao,
+        ],
+      );
 
     return rows;
   }
@@ -175,17 +197,11 @@ class EmaeRepository {
   // OCORRÊNCIAS
   // ============================================================
   //
-  // REGRA:
+  // Abertas:
+  //   permanecem disponíveis para acompanhamento.
   //
-  // 1. Se ainda NÃO foi finalizada:
-  //    continua sendo retornada para acompanhamento.
-  //
-  // 2. Se foi finalizada (status 85):
-  //    utilizamos TERMINOREAL para verificar se a ocorrência
-  //    aconteceu nas últimas 24 horas.
-  //
-  // Isso é necessário porque a ocorrência pode ter sido criada
-  // vários dias antes e somente finalizada agora.
+  // Finalizadas:
+  //   entram pelas últimas 24 horas de TERMINOREAL.
   // ============================================================
   async getOccurrences(cr) {
     const sql = `
@@ -194,10 +210,22 @@ class EmaeRepository {
         tarefa.status,
         tarefa.numero,
         tarefa.nome,
-        tarefa.disponibilizacao,
-        tarefa.prazo,
-        tarefa.inicioreal,
-        tarefa.terminoreal,
+
+        tarefa.disponibilizacao
+          AT TIME ZONE 'America/Sao_Paulo'
+          AS disponibilizacao,
+
+        tarefa.prazo
+          AT TIME ZONE 'America/Sao_Paulo'
+          AS prazo,
+
+        tarefa.inicioreal
+          AT TIME ZONE 'America/Sao_Paulo'
+          AS inicioreal,
+
+        tarefa.terminoreal
+          AT TIME ZONE 'America/Sao_Paulo'
+          AS terminoreal,
 
         TRIM(
           tarefa.estruturadescricao
@@ -221,19 +249,15 @@ class EmaeRepository {
 
         AND tarefa.nome = 'R-OCORRÊNCIA'
 
-        AND tarefa.numero NOT IN (
-  225071901,
-  225833094
-)
+        AND tarefa.numero::text NOT IN (
+          '225071901',
+          '225833094'
+        )
 
         AND (
-          -- Tarefa ainda aberta
           tarefa.status <> 85
 
-          OR
-
-          -- Tarefa finalizada recentemente
-          (
+          OR (
             tarefa.status = 85
 
             AND tarefa.terminoreal IS NOT NULL
@@ -256,26 +280,17 @@ class EmaeRepository {
         END DESC;
     `;
 
-    const { rows } = await corpPool.query(
-      sql,
-      [cr],
-    );
+    const { rows } =
+      await corpPool.query(
+        sql,
+        [cr],
+      );
 
     return rows;
   }
 
   // ============================================================
   // JUSTIFICATIVAS
-  // ============================================================
-  //
-  // Mesma regra das ocorrências:
-  //
-  // - aberta:
-  //   permanece disponível para acompanhamento;
-  //
-  // - finalizada:
-  //   entra no histórico considerando TERMINOREAL,
-  //   e não a data de disponibilização.
   // ============================================================
   async getJustifications(cr) {
     const sql = `
@@ -284,10 +299,22 @@ class EmaeRepository {
         tarefa.status,
         tarefa.numero,
         tarefa.nome,
-        tarefa.disponibilizacao,
-        tarefa.prazo,
-        tarefa.inicioreal,
-        tarefa.terminoreal,
+
+        tarefa.disponibilizacao
+          AT TIME ZONE 'America/Sao_Paulo'
+          AS disponibilizacao,
+
+        tarefa.prazo
+          AT TIME ZONE 'America/Sao_Paulo'
+          AS prazo,
+
+        tarefa.inicioreal
+          AT TIME ZONE 'America/Sao_Paulo'
+          AS inicioreal,
+
+        tarefa.terminoreal
+          AT TIME ZONE 'America/Sao_Paulo'
+          AS terminoreal,
 
         TRIM(
           tarefa.estruturadescricao
@@ -311,14 +338,15 @@ class EmaeRepository {
 
         AND tarefa.nome = 'R-JUSTIFICATIVA'
 
+        AND tarefa.numero::text NOT IN (
+          '225071901',
+          '225833094'
+        )
+
         AND (
-          -- Tarefa ainda aberta
           tarefa.status <> 85
 
-          OR
-
-          -- Tarefa finalizada recentemente
-          (
+          OR (
             tarefa.status = 85
 
             AND tarefa.terminoreal IS NOT NULL
@@ -341,10 +369,11 @@ class EmaeRepository {
         END DESC;
     `;
 
-    const { rows } = await corpPool.query(
-      sql,
-      [cr],
-    );
+    const { rows } =
+      await corpPool.query(
+        sql,
+        [cr],
+      );
 
     return rows;
   }

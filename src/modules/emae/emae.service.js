@@ -646,7 +646,7 @@ class EmaeService {
       selectedWindow
         ? EmaeRepository.getRounds(
             cr,
-            selectedWindow.disponibilizacao,
+            selectedWindow.disponibilizacao_chave,
           )
         : Promise.resolve([]),
 
@@ -786,6 +786,7 @@ class EmaeService {
 }
 
 export default new EmaeService();
+
 
 
 
