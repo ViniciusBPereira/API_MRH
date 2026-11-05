@@ -1,112 +1,134 @@
+
 import contractService from "./contract.service.js";
 
+/**
+ * Respostas de erro consistentes para todas as rotas.
+ * Não revela detalhes internos do PostgreSQL em erros inesperados.
+ */
+function respondError(res, error, fallback, operation) {
+  console.error(`[CONTRACT CONTROLLER] ${operation}:`, error);
+
+  if (error?.code === "23505") {
+    return res.status(409).json({
+      message: "Já existe um contrato cadastrado com esse número/nome.",
+    });
+  }
+
+  if (error?.code === "23503") {
+    return res.status(409).json({
+      message: "Não foi possível concluir a operação porque há registros vinculados ao contrato.",
+    });
+  }
+
+  if (error?.code === "22P02") {
+    return res.status(400).json({
+      message: "Identificador ou valor informado é inválido.",
+    });
+  }
+
+  if (["23502", "23514", "22001", "22003"].includes(error?.code)) {
+    return res.status(400).json({
+      message: "Os dados enviados não atendem às regras do cadastro de contratos.",
+    });
+  }
+
+  const status = Number(error?.statusCode);
+
+  if (Number.isInteger(status) && status >= 400 && status < 500) {
+    return res.status(status).json({
+      message: error.message || fallback,
+    });
+  }
+
+  return res.status(500).json({
+    message: fallback,
+  });
+}
+
 /* =====================================================
-   📄 GET /contracts
-   Lista todos os contratos
+   GET /contracts
 ===================================================== */
 
 export async function getContracts(req, res) {
   try {
-    const contracts = await contractService.getAll();
-
-    return res.status(200).json(contracts);
+    return res.status(200).json(
+      await contractService.getAll()
+    );
   } catch (error) {
-    console.error("[CONTROLLER] getContracts - erro:", error);
-
-    return res.status(500).json({
-      message: "Erro ao buscar contratos.",
-    });
+    return respondError(
+      res,
+      error,
+      "Erro ao buscar contratos.",
+      "getContracts"
+    );
   }
 }
 
 /* =====================================================
-   🔍 GET /contracts/:id
-   Busca contrato por ID
+   GET /contracts/:id
 ===================================================== */
 
 export async function getContractById(req, res) {
   try {
-    const { id } = req.params;
-
-    if (!id) {
-      return res.status(400).json({
-        message: "ID do contrato é obrigatório.",
-      });
-    }
-
-    const contract = await contractService.getById(id);
-
-    return res.status(200).json(contract);
+    return res.status(200).json(
+      await contractService.getById(req.params.id)
+    );
   } catch (error) {
-    console.error("[CONTROLLER] getContractById - erro:", error);
-
-    return res.status(404).json({
-      message: error.message || "Contrato não encontrado.",
-    });
+    return respondError(
+      res,
+      error,
+      "Erro ao buscar contrato.",
+      "getContractById"
+    );
   }
 }
 
 /* =====================================================
-   🔍 GET /contracts/contract/:contract
-   Busca contrato pelo nome/código do contrato
+   GET /contracts/contract/:contract
 ===================================================== */
 
 export async function getContractByContract(req, res) {
   try {
-    const { contract } = req.params;
-
-    if (!contract) {
-      return res.status(400).json({
-        message: "Contrato é obrigatório.",
-      });
-    }
-
-    const contracts = await contractService.getByContract(contract);
-
-    return res.status(200).json(contracts);
+    // Compatibilidade com o código original:
+    // retorna um contrato ou null.
+    return res.status(200).json(
+      await contractService.getByContract(
+        req.params.contract
+      )
+    );
   } catch (error) {
-    console.error("[CONTROLLER] getContractByContract - erro:", error);
-
-    return res.status(500).json({
-      message: "Erro ao buscar contrato.",
-    });
+    return respondError(
+      res,
+      error,
+      "Erro ao buscar contrato.",
+      "getContractByContract"
+    );
   }
 }
 
 /* =====================================================
-   🔍 GET /contracts/bp/:businessPartner
-   Busca contratos de um Business Partner
-
-   IMPORTANTE:
-   Um BP pode possuir vários contratos.
+   GET /contracts/bp/:businessPartner
 ===================================================== */
 
 export async function getContractsByBusinessPartner(req, res) {
   try {
-    const { businessPartner } = req.params;
-
-    if (!businessPartner) {
-      return res.status(400).json({
-        message: "Business Partner é obrigatório.",
-      });
-    }
-
-    const contracts =
-      await contractService.getByBusinessPartner(businessPartner);
-
-    return res.status(200).json(contracts);
+    return res.status(200).json(
+      await contractService.getByBusinessPartner(
+        req.params.businessPartner
+      )
+    );
   } catch (error) {
-    console.error("[CONTROLLER] getContractsByBusinessPartner - erro:", error);
-
-    return res.status(500).json({
-      message: "Erro ao buscar contratos do Business Partner.",
-    });
+    return respondError(
+      res,
+      error,
+      "Erro ao buscar contratos do Business Partner.",
+      "getContractsByBusinessPartner"
+    );
   }
 }
 
 /* =====================================================
-   ➕ POST /contracts
-   Cria um novo contrato
+   POST /contracts
 ===================================================== */
 
 export async function createContract(req, res) {
@@ -115,85 +137,73 @@ export async function createContract(req, res) {
 
     return res.status(201).json(created);
   } catch (error) {
-    console.error("[CONTROLLER] createContract - erro:", error);
-
-    return res.status(400).json({
-      message: error.message || "Erro ao criar contrato.",
-    });
+    return respondError(
+      res,
+      error,
+      "Erro ao criar contrato.",
+      "createContract"
+    );
   }
 }
 
 /* =====================================================
-   ✏️ PUT /contracts/:id
-   Atualiza um contrato
+   PUT /contracts/:id
 ===================================================== */
 
 export async function updateContract(req, res) {
   try {
-    const { id } = req.params;
-
-    if (!id) {
-      return res.status(400).json({
-        message: "ID do contrato é obrigatório.",
-      });
-    }
-
-    const updated = await contractService.update(id, req.body);
+    const updated = await contractService.update(
+      req.params.id,
+      req.body
+    );
 
     return res.status(200).json(updated);
   } catch (error) {
-    console.error("[CONTROLLER] updateContract - erro:", error);
-
-    return res.status(400).json({
-      message: error.message || "Erro ao atualizar contrato.",
-    });
+    return respondError(
+      res,
+      error,
+      "Erro ao atualizar contrato.",
+      "updateContract"
+    );
   }
 }
 
 /* =====================================================
-   🗑 DELETE /contracts/:id
-   Remove um contrato
+   DELETE /contracts/:id
 ===================================================== */
 
 export async function deleteContract(req, res) {
   try {
-    const { id } = req.params;
-
-    if (!id) {
-      return res.status(400).json({
-        message: "ID do contrato é obrigatório.",
-      });
-    }
-
-    const result = await contractService.delete(id);
+    const result = await contractService.delete(
+      req.params.id
+    );
 
     return res.status(200).json(result);
   } catch (error) {
-    console.error("[CONTROLLER] deleteContract - erro:", error);
-
-    return res.status(404).json({
-      message: error.message || "Erro ao remover contrato.",
-    });
+    return respondError(
+      res,
+      error,
+      "Erro ao remover contrato.",
+      "deleteContract"
+    );
   }
 }
 
 /* =====================================================
-   📊 GET /contracts/count
-   Quantidade total de contratos
+   GET /contracts/count
 ===================================================== */
 
 export async function countContracts(req, res) {
   try {
-    const total = await contractService.count();
-
     return res.status(200).json({
-      total,
+      total: await contractService.count(),
     });
   } catch (error) {
-    console.error("[CONTROLLER] countContracts - erro:", error);
-
-    return res.status(500).json({
-      message: "Erro ao contabilizar contratos.",
-    });
+    return respondError(
+      res,
+      error,
+      "Erro ao contabilizar contratos.",
+      "countContracts"
+    );
   }
 }
