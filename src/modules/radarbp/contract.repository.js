@@ -1,111 +1,103 @@
+
 import pool from "../../config/db.js";
 
+/* =====================================================
+   COLUNAS DOS CONTRATOS
+===================================================== */
+
+const SELECT_COLUMNS = `
+  id,
+  contract,
+  client,
+  unit,
+  business_partner,
+  leadership_responsible,
+  headcount,
+  monitoring_status,
+  status_observation,
+  created_at,
+  updated_at
+`;
+
+/* =====================================================
+   REPOSITORY
+===================================================== */
+
 class ContractRepository {
-  // ============================================================
-  // LISTAR TODOS OS CONTRATOS
-  // ============================================================
+  // ==================================================
+  // LISTAR CONTRATOS
+  // ==================================================
 
   async findAll() {
-    const sql = `
-      SELECT
-        id,
-        contract,
-        client,
-        unit,
-        business_partner,
-        leadership_responsible,
-        headcount,
-        created_at,
-        updated_at
+    const { rows } = await pool.query(`
+      SELECT ${SELECT_COLUMNS}
       FROM contracts
-      ORDER BY contract ASC;
-    `;
-
-    const { rows } = await pool.query(sql);
+      ORDER BY
+        contract ASC,
+        business_partner ASC;
+    `);
 
     return rows;
   }
 
-  // ============================================================
-  // BUSCAR CONTRATO POR ID
-  // ============================================================
+  // ==================================================
+  // BUSCAR POR ID
+  // ==================================================
 
   async findById(id) {
-    const sql = `
-      SELECT
-        id,
-        contract,
-        client,
-        unit,
-        business_partner,
-        leadership_responsible,
-        headcount,
-        created_at,
-        updated_at
+    const { rows } = await pool.query(
+      `
+      SELECT ${SELECT_COLUMNS}
       FROM contracts
       WHERE id = $1;
-    `;
-
-    const { rows } = await pool.query(sql, [id]);
+      `,
+      [id]
+    );
 
     return rows[0] || null;
   }
 
-  // ============================================================
-  // BUSCAR CONTRATO PELO NÚMERO/NOME DO CONTRATO
-  // ============================================================
+  // ==================================================
+  // BUSCAR PELO CR
+  // ==================================================
 
   async findByContract(contract) {
-    const sql = `
-      SELECT
-        id,
-        contract,
-        client,
-        unit,
-        business_partner,
-        leadership_responsible,
-        headcount,
-        created_at,
-        updated_at
+    const { rows } = await pool.query(
+      `
+      SELECT ${SELECT_COLUMNS}
       FROM contracts
-      WHERE contract = $1
+      WHERE LOWER(BTRIM(contract)) =
+            LOWER(BTRIM($1))
       LIMIT 1;
-    `;
-
-    const { rows } = await pool.query(sql, [contract]);
+      `,
+      [contract]
+    );
 
     return rows[0] || null;
   }
 
-  // ============================================================
-  // BUSCAR CONTRATO PELO BUSINESS PARTNER
-  // ============================================================
+  // ==================================================
+  // BUSCAR PELO BUSINESS PARTNER
+  // ==================================================
 
   async findByBusinessPartner(businessPartner) {
-    const sql = `
-      SELECT
-        id,
-        contract,
-        client,
-        unit,
-        business_partner,
-        leadership_responsible,
-        headcount,
-        created_at,
-        updated_at
+    const { rows } = await pool.query(
+      `
+      SELECT ${SELECT_COLUMNS}
       FROM contracts
-      WHERE business_partner = $1
+      WHERE LOWER(BTRIM(business_partner)) =
+            LOWER(BTRIM($1))
       ORDER BY contract ASC;
-    `;
-
-    const { rows } = await pool.query(sql, [businessPartner]);
+      `,
+      [businessPartner]
+    );
 
     return rows;
   }
 
-  // ============================================================
+  // ==================================================
   // CRIAR CONTRATO
-  // ============================================================
+  // ==================================================
 
   async create(data) {
     const sql = `
@@ -115,7 +107,9 @@ class ContractRepository {
         unit,
         business_partner,
         leadership_responsible,
-        headcount
+        headcount,
+        monitoring_status,
+        status_observation
       )
       VALUES (
         $1,
@@ -123,37 +117,35 @@ class ContractRepository {
         $3,
         $4,
         $5,
-        $6
+        $6,
+        $7,
+        $8
       )
-      RETURNING
-        id,
-        contract,
-        client,
-        unit,
-        business_partner,
-        leadership_responsible,
-        headcount,
-        created_at,
-        updated_at;
+      RETURNING ${SELECT_COLUMNS};
     `;
 
     const values = [
       data.contract,
-      data.client ?? null,
-      data.unit ?? null,
+      data.client,
+      data.unit,
       data.business_partner,
-      data.leadership_responsible ?? null,
-      data.headcount ?? null,
+      data.leadership_responsible,
+      data.headcount,
+      data.monitoring_status,
+      data.status_observation,
     ];
 
-    const { rows } = await pool.query(sql, values);
+    const { rows } = await pool.query(
+      sql,
+      values
+    );
 
     return rows[0];
   }
 
-  // ============================================================
+  // ==================================================
   // ATUALIZAR CONTRATO
-  // ============================================================
+  // ==================================================
 
   async update(id, data) {
     const sql = `
@@ -165,112 +157,136 @@ class ContractRepository {
         business_partner = $4,
         leadership_responsible = $5,
         headcount = $6,
+        monitoring_status = $7,
+        status_observation = $8,
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = $7
-      RETURNING
-        id,
-        contract,
-        client,
-        unit,
-        business_partner,
-        leadership_responsible,
-        headcount,
-        created_at,
-        updated_at;
+      WHERE id = $9
+      RETURNING ${SELECT_COLUMNS};
     `;
 
     const values = [
       data.contract,
-      data.client ?? null,
-      data.unit ?? null,
+      data.client,
+      data.unit,
       data.business_partner,
-      data.leadership_responsible ?? null,
-      data.headcount ?? null,
+      data.leadership_responsible,
+      data.headcount,
+      data.monitoring_status,
+      data.status_observation,
       id,
     ];
 
-    const { rows } = await pool.query(sql, values);
+    const { rows } = await pool.query(
+      sql,
+      values
+    );
 
     return rows[0] || null;
   }
 
-  // ============================================================
+  // ==================================================
   // EXCLUIR CONTRATO
-  // ============================================================
+  // ==================================================
 
   async delete(id) {
-    const sql = `
+    // As dependências permanecem sob as regras
+    // das chaves estrangeiras do PostgreSQL.
+
+    const { rows } = await pool.query(
+      `
       DELETE FROM contracts
       WHERE id = $1
       RETURNING id;
-    `;
-
-    const { rows } = await pool.query(sql, [id]);
+      `,
+      [id]
+    );
 
     return rows[0] || null;
   }
 
-  // ============================================================
+  // ==================================================
   // CONTAR CONTRATOS
-  // ============================================================
+  // ==================================================
 
   async count() {
-    const sql = `
-      SELECT COUNT(*)::integer AS total
+    const { rows } = await pool.query(`
+      SELECT
+        COUNT(*)::integer AS total
       FROM contracts;
-    `;
-
-    const { rows } = await pool.query(sql);
+    `);
 
     return rows[0].total;
   }
 
-  // ============================================================
-  // VERIFICAR SE CONTRATO JÁ EXISTE
-  // ============================================================
+  // ==================================================
+  // VERIFICAR CR DUPLICADO
+  // ==================================================
 
-  async existsByContract(contract, excludeId = null) {
+  async existsByContract(
+    contract,
+    excludeId = null
+  ) {
+    const values = [contract];
+
     let sql = `
       SELECT 1
       FROM contracts
-      WHERE contract = $1
+      WHERE LOWER(BTRIM(contract)) =
+            LOWER(BTRIM($1))
     `;
 
-    const values = [contract];
-
-    if (excludeId) {
-      sql += ` AND id <> $2`;
+    if (
+      excludeId !== null &&
+      excludeId !== undefined
+    ) {
+      sql += " AND id <> $2";
       values.push(excludeId);
     }
 
-    sql += ` LIMIT 1;`;
+    sql += " LIMIT 1;";
 
-    const { rows } = await pool.query(sql, values);
+    const { rows } = await pool.query(
+      sql,
+      values
+    );
 
     return rows.length > 0;
   }
 
-  // ============================================================
-  // VERIFICAR SE BUSINESS PARTNER JÁ ESTÁ VINCULADO AO CONTRATO
-  // ============================================================
+  // ==================================================
+  // VERIFICAR BUSINESS PARTNER EXISTENTE
+  //
+  // Mantido para compatibilidade.
+  // Não impede que um BP tenha vários contratos.
+  // ==================================================
 
-  async existsByBusinessPartner(businessPartner, excludeId = null) {
+  async existsByBusinessPartner(
+    businessPartner,
+    excludeId = null
+  ) {
+    const values = [businessPartner];
+
     let sql = `
       SELECT 1
       FROM contracts
-      WHERE business_partner = $1
+      WHERE LOWER(BTRIM(business_partner)) =
+            LOWER(BTRIM($1))
     `;
 
-    const values = [businessPartner];
-
-    if (excludeId) {
-      sql += ` AND id <> $2`;
+    if (
+      excludeId !== null &&
+      excludeId !== undefined
+    ) {
+      sql += " AND id <> $2";
       values.push(excludeId);
     }
 
-    sql += ` LIMIT 1;`;
+    sql += " LIMIT 1;";
 
-    const { rows } = await pool.query(sql, values);
+    const { rows } = await pool.query(
+      sql,
+      values
+    );
 
     return rows.length > 0;
   }
