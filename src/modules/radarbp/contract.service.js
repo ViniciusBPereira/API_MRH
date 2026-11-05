@@ -1,266 +1,370 @@
+
 import contractRepository from "./contract.repository.js";
 
-class ContractService {
-  // ============================================================
-  // LISTAR CONTRATOS
-  // ============================================================
+const DEFAULT_STATUS = "Em acompanhamento";
 
-  async getAll() {
-    return await contractRepository.findAll();
+const VALID_STATUSES = [
+  DEFAULT_STATUS,
+  "Standby",
+  "Encerrado",
+];
+
+const MAX_STATUS_OBSERVATION = 500;
+
+/* =====================================================
+   TRATAMENTO DE ERROS
+===================================================== */
+
+function httpError(message, statusCode = 400) {
+  return Object.assign(new Error(message), {
+    statusCode,
+  });
+}
+
+/* =====================================================
+   CAMPOS OBRIGATÓRIOS
+===================================================== */
+
+function requiredText(value, name) {
+  const result =
+    value === undefined || value === null
+      ? ""
+      : String(value).trim();
+
+  if (!result) {
+    throw httpError(`${name} é obrigatório.`);
   }
 
-  // ============================================================
-  // BUSCAR CONTRATO POR ID
-  // ============================================================
+  return result;
+}
+
+/* =====================================================
+   CAMPOS OPCIONAIS
+===================================================== */
+
+function optionalText(value) {
+  if (value === null || value === undefined) {
+    return null;
+  }
+
+  const result = String(value).trim();
+
+  return result || null;
+}
+
+/* =====================================================
+   EFETIVO
+===================================================== */
+
+function normalizeHeadcount(value) {
+  if (
+    value === "" ||
+    value === null ||
+    value === undefined
+  ) {
+    return null;
+  }
+
+  const number = Number(value);
+
+  if (
+    !Number.isInteger(number) ||
+    number < 0 ||
+    number > 2147483647
+  ) {
+    throw httpError(
+      "Efetivo deve ser um número inteiro entre 0 e 2.147.483.647."
+    );
+  }
+
+  return number;
+}
+
+/* =====================================================
+   STATUS DO CONTRATO
+===================================================== */
+
+function normalizeMonitoringStatus(value) {
+  const result = String(
+    value ?? DEFAULT_STATUS
+  ).trim();
+
+  const found = VALID_STATUSES.find(
+    (item) =>
+      item.toLocaleLowerCase("pt-BR") ===
+      result.toLocaleLowerCase("pt-BR")
+  );
+
+  if (!found) {
+    throw httpError(
+      `Status inválido. Utilize: ${VALID_STATUSES.join(", ")}.`
+    );
+  }
+
+  return found;
+}
+
+/* =====================================================
+   OBSERVAÇÃO DO STATUS
+===================================================== */
+
+function normalizeObservation(value) {
+  const result =
+    value === null || value === undefined
+      ? ""
+      : String(value).trim();
+
+  if (result.length > MAX_STATUS_OBSERVATION) {
+    throw httpError(
+      `A observação deve ter no máximo ${MAX_STATUS_OBSERVATION} caracteres.`
+    );
+  }
+
+  return result;
+}
+
+/* =====================================================
+   PREPARAR DADOS DO CONTRATO
+
+   POST:
+   - Status sempre começa em "Em acompanhamento".
+
+   PUT:
+   - Permite editar status e observação.
+   - Preserva campos não enviados.
+===================================================== */
+
+function prepareContractData(data, current = null) {
+  if (
+    !data ||
+    typeof data !== "object" ||
+    Array.isArray(data)
+  ) {
+    throw httpError(
+      "Dados do contrato são obrigatórios."
+    );
+  }
+
+  const create = current === null;
+
+  return {
+    contract: requiredText(
+      data.contract ?? current?.contract,
+      "Contrato"
+    ),
+
+    business_partner: requiredText(
+      data.business_partner ??
+        current?.business_partner,
+      "Business Partner"
+    ),
+
+    client: optionalText(
+      data.client === undefined
+        ? current?.client
+        : data.client
+    ),
+
+    unit: optionalText(
+      data.unit === undefined
+        ? current?.unit
+        : data.unit
+    ),
+
+    leadership_responsible: optionalText(
+      data.leadership_responsible === undefined
+        ? current?.leadership_responsible
+        : data.leadership_responsible
+    ),
+
+    headcount: normalizeHeadcount(
+      data.headcount === undefined
+        ? current?.headcount
+        : data.headcount
+    ),
+
+    monitoring_status: create
+      ? DEFAULT_STATUS
+      : normalizeMonitoringStatus(
+          data.monitoring_status === undefined
+            ? current.monitoring_status
+            : data.monitoring_status
+        ),
+
+    status_observation: normalizeObservation(
+      data.status_observation === undefined
+        ? current?.status_observation
+        : data.status_observation
+    ),
+  };
+}
+
+/* =====================================================
+   SERVICE
+===================================================== */
+
+class ContractService {
+  // ==================================================
+  // LISTAR CONTRATOS
+  // ==================================================
+
+  async getAll() {
+    return contractRepository.findAll();
+  }
+
+  // ==================================================
+  // BUSCAR POR ID
+  // ==================================================
 
   async getById(id) {
-    if (!id) {
-      throw new Error("ID do contrato é obrigatório.");
-    }
+    const key = requiredText(
+      id,
+      "ID do contrato"
+    );
 
-    const contract = await contractRepository.findById(id);
+    const contract =
+      await contractRepository.findById(key);
 
     if (!contract) {
-      throw new Error("Contrato não encontrado.");
+      throw httpError(
+        "Contrato não encontrado.",
+        404
+      );
     }
 
     return contract;
   }
 
-  // ============================================================
-  // BUSCAR POR CONTRATO
-  // ============================================================
+  // ==================================================
+  // BUSCAR PELO CR
+  // ==================================================
 
   async getByContract(contract) {
-    if (!contract || !String(contract).trim()) {
-      throw new Error("Contrato é obrigatório.");
-    }
-
-    return await contractRepository.findByContract(String(contract).trim());
+    return contractRepository.findByContract(
+      requiredText(contract, "Contrato")
+    );
   }
 
-  // ============================================================
-  // BUSCAR POR BUSINESS PARTNER
-  //
-  // IMPORTANTE:
-  // Um BP pode possuir vários contratos.
-  // ============================================================
+  // ==================================================
+  // BUSCAR PELO BUSINESS PARTNER
+  // ==================================================
 
   async getByBusinessPartner(businessPartner) {
-    if (!businessPartner || !String(businessPartner).trim()) {
-      throw new Error("Business Partner é obrigatório.");
-    }
-
-    return await contractRepository.findByBusinessPartner(
-      String(businessPartner).trim(),
+    return contractRepository.findByBusinessPartner(
+      requiredText(
+        businessPartner,
+        "Business Partner"
+      )
     );
   }
 
-  // ============================================================
+  // ==================================================
   // CRIAR CONTRATO
-  // ============================================================
+  // ==================================================
 
   async create(data) {
-    if (!data) {
-      throw new Error("Dados do contrato são obrigatórios.");
+    const payload = prepareContractData(data);
+
+    // Mantém a regra atual: CR único.
+    if (
+      await contractRepository.existsByContract(
+        payload.contract
+      )
+    ) {
+      throw httpError(
+        "Já existe um contrato cadastrado com esse número/nome.",
+        409
+      );
     }
 
-    // ----------------------------------------------------------
-    // CAMPOS OBRIGATÓRIOS
-    // ----------------------------------------------------------
-
-    if (!data.contract || !String(data.contract).trim()) {
-      throw new Error("Contrato é obrigatório.");
-    }
-
-    if (!data.business_partner || !String(data.business_partner).trim()) {
-      throw new Error("Business Partner é obrigatório.");
-    }
-
-    // ----------------------------------------------------------
-    // NORMALIZAÇÃO
-    // ----------------------------------------------------------
-
-    const contract = String(data.contract).trim();
-
-    const businessPartner = String(data.business_partner).trim();
-
-    // ----------------------------------------------------------
-    // VERIFICAR CONTRATO DUPLICADO
-    //
-    // O contrato é único.
-    // ----------------------------------------------------------
-
-    const contractExists = await contractRepository.existsByContract(contract);
-
-    if (contractExists) {
-      throw new Error("Já existe um contrato cadastrado com esse nome.");
-    }
-
-    // ----------------------------------------------------------
-    // CRIAR CONTRATO
-    // ----------------------------------------------------------
-
-    return await contractRepository.create({
-      contract,
-
-      client:
-        data.client !== undefined && data.client !== ""
-          ? String(data.client).trim()
-          : null,
-
-      unit:
-        data.unit !== undefined && data.unit !== ""
-          ? String(data.unit).trim()
-          : null,
-
-      business_partner: businessPartner,
-
-      leadership_responsible:
-        data.leadership_responsible !== undefined &&
-        data.leadership_responsible !== ""
-          ? String(data.leadership_responsible).trim()
-          : null,
-
-      headcount:
-        data.headcount !== undefined && data.headcount !== ""
-          ? data.headcount
-          : null,
-    });
+    return contractRepository.create(payload);
   }
 
-  // ============================================================
+  // ==================================================
   // ATUALIZAR CONTRATO
-  // ============================================================
+  // ==================================================
 
   async update(id, data) {
-    if (!id) {
-      throw new Error("ID do contrato é obrigatório.");
-    }
-
-    if (!data) {
-      throw new Error("Dados do contrato são obrigatórios.");
-    }
-
-    // ----------------------------------------------------------
-    // VERIFICAR EXISTÊNCIA
-    // ----------------------------------------------------------
-
-    const current = await contractRepository.findById(id);
-
-    if (!current) {
-      throw new Error("Contrato não encontrado.");
-    }
-
-    // ----------------------------------------------------------
-    // CAMPOS OBRIGATÓRIOS
-    // ----------------------------------------------------------
-
-    if (!data.contract || !String(data.contract).trim()) {
-      throw new Error("Contrato é obrigatório.");
-    }
-
-    if (!data.business_partner || !String(data.business_partner).trim()) {
-      throw new Error("Business Partner é obrigatório.");
-    }
-
-    // ----------------------------------------------------------
-    // NORMALIZAÇÃO
-    // ----------------------------------------------------------
-
-    const contract = String(data.contract).trim();
-
-    const businessPartner = String(data.business_partner).trim();
-
-    // ----------------------------------------------------------
-    // VERIFICAR CONTRATO DUPLICADO
-    //
-    // Ignora o próprio registro através do ID.
-    // ----------------------------------------------------------
-
-    const contractExists = await contractRepository.existsByContract(
-      contract,
+    const key = requiredText(
       id,
+      "ID do contrato"
     );
 
-    if (contractExists) {
-      throw new Error("Já existe outro contrato cadastrado com esse nome.");
+    const current =
+      await contractRepository.findById(key);
+
+    if (!current) {
+      throw httpError(
+        "Contrato não encontrado.",
+        404
+      );
     }
 
-    // ----------------------------------------------------------
-    // ATUALIZAR
-    // ----------------------------------------------------------
+    const payload = prepareContractData(
+      data,
+      current
+    );
 
-    const updated = await contractRepository.update(id, {
-      contract,
+    // Não permite duplicar o CR de outro contrato.
+    if (
+      await contractRepository.existsByContract(
+        payload.contract,
+        key
+      )
+    ) {
+      throw httpError(
+        "Já existe outro contrato cadastrado com esse número/nome.",
+        409
+      );
+    }
 
-      client:
-        data.client !== undefined && data.client !== ""
-          ? String(data.client).trim()
-          : null,
-
-      unit:
-        data.unit !== undefined && data.unit !== ""
-          ? String(data.unit).trim()
-          : null,
-
-      business_partner: businessPartner,
-
-      leadership_responsible:
-        data.leadership_responsible !== undefined &&
-        data.leadership_responsible !== ""
-          ? String(data.leadership_responsible).trim()
-          : null,
-
-      headcount:
-        data.headcount !== undefined && data.headcount !== ""
-          ? data.headcount
-          : null,
-    });
+    const updated =
+      await contractRepository.update(
+        key,
+        payload
+      );
 
     if (!updated) {
-      throw new Error("Não foi possível atualizar o contrato.");
+      throw httpError(
+        "Contrato não encontrado.",
+        404
+      );
     }
 
     return updated;
   }
 
-  // ============================================================
+  // ==================================================
   // EXCLUIR CONTRATO
-  // ============================================================
+  // ==================================================
 
   async delete(id) {
-    if (!id) {
-      throw new Error("ID do contrato é obrigatório.");
+    const key = requiredText(
+      id,
+      "ID do contrato"
+    );
+
+    const removed =
+      await contractRepository.delete(key);
+
+    if (!removed) {
+      throw httpError(
+        "Contrato não encontrado.",
+        404
+      );
     }
-
-    // ----------------------------------------------------------
-    // VERIFICAR EXISTÊNCIA
-    // ----------------------------------------------------------
-
-    const current = await contractRepository.findById(id);
-
-    if (!current) {
-      throw new Error("Contrato não encontrado.");
-    }
-
-    // ----------------------------------------------------------
-    // EXCLUIR
-    // ----------------------------------------------------------
-
-    await contractRepository.delete(id);
 
     return {
       message: "Contrato removido com sucesso.",
     };
   }
 
-  // ============================================================
+  // ==================================================
   // CONTAR CONTRATOS
-  // ============================================================
+  // ==================================================
 
   async count() {
-    return await contractRepository.count();
+    return contractRepository.count();
   }
 }
 
