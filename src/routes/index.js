@@ -6,10 +6,10 @@ const router = express.Router();
 
 import authRoutes from "../modules/auth/auth.routes.js";
 
-import mrhsAbertasRoutes from "../modules/mrhsabertas/mrhsabertas.routes.js";
 import mrhsAbertasRoutes, {
   melhoriasPublicRoutes,
 } from "../modules/mrhsabertas/mrhsabertas.routes.js";
+
 import mrhsDocumentacaoRoutes from "../modules/mrhsdocumentacao/mrhsdocumentacao.routes.js";
 
 import mrhsAgendamentoRoutes from "../modules/mrhsagendamento/mrhsAgendamento.routes.js";
