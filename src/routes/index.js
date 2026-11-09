@@ -62,6 +62,8 @@ router.use("/auth", authRoutes);
 
 router.use("/rondas", rondasLoginRoutes);
 
+router.use("/melhorias", melhoriasPublicRoutes);
+
 /* ================= EMAE PÚBLICO ================= */
 
 router.use("/emae", emaeRoutes);
@@ -71,8 +73,6 @@ router.use("/emae", emaeRoutes);
 ======================================================= */
 
 router.use("/rondas", authRondasCorp, rondasRoutes);
-
-router.use("/melhorias", melhoriasPublicRoutes);
 
 /* =======================================================
    ROTAS PROTEGIDO
