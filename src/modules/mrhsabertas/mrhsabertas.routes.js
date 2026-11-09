@@ -17,5 +17,11 @@ router.get("/", controller.getMRHsAbertas);
  * Move a MRH do time SELECAO para DOCUMENTACAO
  */
 router.patch("/:id/documentacao", controller.moverMRH);
+// Nova rota pública de melhorias
+export const melhoriasPublicRoutes = Router();
 
+melhoriasPublicRoutes.post(
+  "/",
+  controller.salvarMelhoria
+);
 export default router;
