@@ -44,7 +44,14 @@ export async function getMRHsAbertas(req, res) {
     });
   }
 }
-
+export async function salvarMelhoria(req, res) {
+  // Valida os dados recebidos
+  // Cria um ID e registra data/hora
+  // Lê as melhorias já armazenadas
+  // Acrescenta a nova sugestão
+  // Salva no arquivo JSON
+  // Retorna HTTP 201 quando concluir
+}
 /**
  * 🔹 Controller responsável por mover MRH
  * do time SELECAO para DOCUMENTACAO
