@@ -18,13 +18,14 @@ import {
    Cada chamada envia { acao: "...", ...dados }.
    O JSON fica em data/presencas-evento.json, separado de melhorias.json.
 
-   ATENÇÃO: a rota /api/melhorias deve passar pelo middleware
-   corporativo de autenticação que preenche req.user.
+   Rota pública existente: POST /api/melhorias, sem JWT.
    A fila protege operações concorrentes NO MESMO PROCESSO Node.
+   Em produção, limite acesso de rede e considere uma proteção
+   específica para mutações administrativas.
    ========================================================= */
 
 const ARQUIVO_PRESENCAS = fileURLToPath(
-  new URL("../../data/presencas-evento.json", import.meta.url),
+  new URL("../../../data/presencas-evento.json", import.meta.url),
 );
 
 let filaPresencas = Promise.resolve();
@@ -46,7 +47,7 @@ const usuarioDaRequisicao = (req) =>
   limparTexto(
     req.user?.nome ||
       req.user?.name ||
-      String(req.user?.id || "Operador"),
+      String(req.user?.id || "Recepção"),
     100,
   );
 
@@ -56,6 +57,10 @@ class ErroValidacao extends Error {
     this.status = status;
   }
 }
+
+/* =========================================================
+   ESTADO INICIAL
+   ========================================================= */
 
 function estadoVazio() {
   return {
@@ -79,7 +84,10 @@ async function lerPresencas() {
   try {
     conteudo = await readFile(ARQUIVO_PRESENCAS, "utf8");
   } catch (erro) {
-    if (erro.code === "ENOENT") return estadoVazio();
+    if (erro.code === "ENOENT") {
+      return estadoVazio();
+    }
+
     throw erro;
   }
 
@@ -95,9 +103,17 @@ async function lerPresencas() {
     throw new Error("Arquivo presencas-evento.json inválido.");
   }
 
-  if (!Array.isArray(estado.history)) estado.history = [];
-  if (!estado.eventTitle) estado.eventTitle = "Evento Grupo GPS";
-  if (!Number.isInteger(estado.revision)) estado.revision = 0;
+  if (!Array.isArray(estado.history)) {
+    estado.history = [];
+  }
+
+  if (!estado.eventTitle) {
+    estado.eventTitle = "Evento Grupo GPS";
+  }
+
+  if (!Number.isInteger(estado.revision)) {
+    estado.revision = 0;
+  }
 
   return estado;
 }
@@ -107,7 +123,9 @@ async function lerPresencas() {
    ========================================================= */
 
 async function gravarPresencas(estado) {
-  await mkdir(dirname(ARQUIVO_PRESENCAS), { recursive: true });
+  await mkdir(dirname(ARQUIVO_PRESENCAS), {
+    recursive: true,
+  });
 
   estado.revision = (estado.revision || 0) + 1;
   estado.updatedAt = new Date().toISOString();
@@ -126,15 +144,22 @@ async function gravarPresencas(estado) {
 
     await rename(temporario, ARQUIVO_PRESENCAS);
   } finally {
-    await rm(temporario, { force: true }).catch(() => {});
+    await rm(temporario, {
+      force: true,
+    }).catch(() => {});
   }
 }
 
 /* =========================================================
-   HISTÓRICO DE OPERAÇÕES
+   HISTÓRICO DAS OPERAÇÕES
    ========================================================= */
 
-function registrarHistorico(estado, req, acao, detalhe = {}) {
+function registrarHistorico(
+  estado,
+  req,
+  acao,
+  detalhe = {},
+) {
   estado.history.push({
     id: randomUUID(),
     at: new Date().toISOString(),
@@ -148,14 +173,21 @@ function registrarHistorico(estado, req, acao, detalhe = {}) {
   }
 }
 
+/* =========================================================
+   RESUMO PARA O FRONTEND
+   ========================================================= */
+
 function resumoPublico(estado) {
-  // O histórico detalhado fica guardado no servidor.
+  // O histórico detalhado fica guardado no servidor,
+  // sem ser exposto na interface.
+
   const { history, ...dados } = estado;
+
   return dados;
 }
 
 /* =========================================================
-   CONSULTAS
+   CONSULTAS DE CONVIDADOS E GERENTES
    ========================================================= */
 
 function convidadoPorId(estado, id) {
@@ -164,7 +196,10 @@ function convidadoPorId(estado, id) {
   );
 
   if (!convidado) {
-    throw new ErroValidacao(404, "Convidado não encontrado.");
+    throw new ErroValidacao(
+      404,
+      "Convidado não encontrado.",
+    );
   }
 
   return convidado;
@@ -176,7 +211,10 @@ function gerentePorId(estado, id) {
   );
 
   if (!gerente) {
-    throw new ErroValidacao(404, "Gerente não encontrado.");
+    throw new ErroValidacao(
+      404,
+      "Gerente não encontrado.",
+    );
   }
 
   return gerente;
@@ -186,14 +224,23 @@ function gerentePorId(estado, id) {
    VALIDAÇÃO DE CONVIDADOS
    ========================================================= */
 
-function validarConvidado(entrada, gerentes, existente = null) {
+function validarConvidado(
+  entrada,
+  gerentes,
+  existente = null,
+) {
   const name = limparTexto(entrada?.name, 180);
+
   const group = entrada?.group;
+
   const detail = limparTexto(entrada?.detail, 180);
 
   const clientGroup =
     group === "cliente"
-      ? limparTexto(entrada?.clientGroup || detail, 160)
+      ? limparTexto(
+          entrada?.clientGroup || detail,
+          160,
+        )
       : "";
 
   const managerId =
@@ -228,6 +275,7 @@ function validarConvidado(entrada, gerentes, existente = null) {
       noticeOpenedAt: null,
       source: "Cadastro manual",
     }),
+
     name,
     group,
     detail,
@@ -235,6 +283,10 @@ function validarConvidado(entrada, gerentes, existente = null) {
     managerId,
   };
 }
+
+/* =========================================================
+   PREVENÇÃO DE CONVIDADOS DUPLICADOS
+   ========================================================= */
 
 function validarNomeUnico(
   estado,
@@ -261,12 +313,18 @@ function validarNomeUnico(
    VALIDAÇÃO DE GERENTES
    ========================================================= */
 
-function validarGerente(entrada, existente = null) {
+function validarGerente(
+  entrada,
+  existente = null,
+) {
   const name = limparTexto(entrada?.name, 90);
 
   let phone = somenteDigitos(entrada?.phone);
 
-  if (phone.length === 10 || phone.length === 11) {
+  if (
+    phone.length === 10 ||
+    phone.length === 11
+  ) {
     phone = `55${phone}`;
   }
 
@@ -277,22 +335,29 @@ function validarGerente(entrada, existente = null) {
     );
   }
 
-  if (phone && !/^\d{12,15}$/.test(phone)) {
+  if (
+    phone &&
+    !/^\d{12,15}$/.test(phone)
+  ) {
     throw new ErroValidacao(
       400,
       "WhatsApp inválido. Informe país, DDD e número.",
     );
   }
 
-  // "verified" indica conferência humana do número.
-  // Não representa validação realizada pela Meta.
-  const verified = Boolean(entrada?.verified && phone);
+  // "verified" indica apenas conferência humana.
+  // Não valida o número pela Meta.
+
+  const verified = Boolean(
+    entrada?.verified && phone,
+  );
 
   return {
     ...(existente || {
       id: randomUUID(),
       source: "Cadastro manual",
     }),
+
     name,
     phone,
     verified,
@@ -303,29 +368,41 @@ function validarGerente(entrada, existente = null) {
    AÇÕES DA LISTA DE PRESENÇA
    ========================================================= */
 
-function aplicarAcao(estado, req, acao, entrada) {
+function aplicarAcao(
+  estado,
+  req,
+  acao,
+  entrada,
+) {
   const id = limparTexto(entrada.id, 100);
 
   switch (acao) {
-    /* -----------------------------------------------------
-       LISTAR
-       ----------------------------------------------------- */
-    case "listar":
+
+    /* =====================================================
+       1. LISTAR CONVIDADOS E GERENTES
+       ===================================================== */
+
+    case "listar": {
       return {
         alterou: false,
         data: resumoPublico(estado),
       };
+    }
 
-    /* -----------------------------------------------------
-       ADICIONAR CONVIDADO
-       ----------------------------------------------------- */
+    /* =====================================================
+       2. ADICIONAR CONVIDADO INDIVIDUAL
+       ===================================================== */
+
     case "adicionarConvidado": {
       const convidado = validarConvidado(
         entrada,
         estado.managers,
       );
 
-      validarNomeUnico(estado, convidado);
+      validarNomeUnico(
+        estado,
+        convidado,
+      );
 
       estado.guests.push(convidado);
 
@@ -346,9 +423,10 @@ function aplicarAcao(estado, req, acao, entrada) {
       };
     }
 
-    /* -----------------------------------------------------
-       ADICIONAR CONVIDADOS EM LOTE
-       ----------------------------------------------------- */
+    /* =====================================================
+       3. ADICIONAR CONVIDADOS EM LOTE
+       ===================================================== */
+
     case "adicionarConvidadosLote": {
       const nomes = entrada.names;
 
@@ -364,7 +442,9 @@ function aplicarAcao(estado, req, acao, entrada) {
       }
 
       if (
-        !["interno", "cliente"].includes(entrada.group)
+        !["interno", "cliente"].includes(
+          entrada.group,
+        )
       ) {
         throw new ErroValidacao(
           400,
@@ -377,7 +457,9 @@ function aplicarAcao(estado, req, acao, entrada) {
       for (const item of nomes) {
         const name = limparTexto(item, 180);
 
-        if (name.length < 2) continue;
+        if (name.length < 2) {
+          continue;
+        }
 
         const convidado = validarConvidado(
           {
@@ -397,7 +479,9 @@ function aplicarAcao(estado, req, acao, entrada) {
               normalizarNome(convidado.name),
         );
 
-        if (existe) continue;
+        if (existe) {
+          continue;
+        }
 
         estado.guests.push(convidado);
         adicionados.push(convidado);
@@ -423,11 +507,200 @@ function aplicarAcao(estado, req, acao, entrada) {
       };
     }
 
-    /* -----------------------------------------------------
-       EDITAR CONVIDADO
-       ----------------------------------------------------- */
+    /* =====================================================
+       4. IMPORTAÇÃO DE PLANILHA EXCEL
+
+       O React interpreta o Excel e envia JSON.
+
+       Não exclui convidados existentes.
+       Não altera check-ins realizados.
+       Não valida telefones automaticamente.
+       Evita duplicados por nome + categoria.
+       ===================================================== */
+
+    case "importarConvidadosPlanilha": {
+      const rows = entrada.guests;
+
+      if (
+        !Array.isArray(rows) ||
+        rows.length === 0 ||
+        rows.length > 500
+      ) {
+        throw new ErroValidacao(
+          400,
+          "Importe entre 1 e 500 convidados por vez.",
+        );
+      }
+
+      let added = 0;
+      let skipped = 0;
+      let managersAdded = 0;
+
+      const known = new Set(
+        estado.guests.map(
+          (g) =>
+            `${g.group}|${normalizarNome(g.name)}`,
+        ),
+      );
+
+      for (const item of rows) {
+        const name = limparTexto(
+          item?.name,
+          180,
+        );
+
+        if (name.length < 2) {
+          skipped++;
+          continue;
+        }
+
+        const group =
+          item?.group === "cliente"
+            ? "cliente"
+            : "interno";
+
+        const key =
+          `${group}|${normalizarNome(name)}`;
+
+        if (known.has(key)) {
+          skipped++;
+          continue;
+        }
+
+        /* =========================================
+           IDENTIFICAR GERENTE DA PLANILHA
+           ========================================= */
+
+        const managerName =
+          group === "cliente"
+            ? limparTexto(
+                item?.managerName,
+                90,
+              )
+            : "";
+
+        let managerId = null;
+
+        if (managerName) {
+          let manager = estado.managers.find(
+            (m) =>
+              normalizarNome(m.name) ===
+              normalizarNome(managerName),
+          );
+
+          if (!manager) {
+            let phone = somenteDigitos(
+              item?.managerPhone,
+            );
+
+            if (
+              phone.length === 10 ||
+              phone.length === 11
+            ) {
+              phone = `55${phone}`;
+            }
+
+            if (
+              phone &&
+              !/^\d{12,15}$/.test(phone)
+            ) {
+              phone = "";
+            }
+
+            manager = {
+              id: randomUUID(),
+              name: managerName,
+              phone,
+              verified: false,
+              source: "Importação de planilha",
+            };
+
+            estado.managers.push(manager);
+
+            managersAdded++;
+          }
+
+          managerId = manager.id;
+        }
+
+        /* =========================================
+           CADASTRAR CONVIDADO
+           ========================================= */
+
+        const detail = limparTexto(
+          item?.detail,
+          180,
+        );
+
+        const clientGroup =
+          group === "cliente"
+            ? limparTexto(
+                item?.clientGroup || detail,
+                160,
+              )
+            : "";
+
+        const guest = validarConvidado(
+          {
+            name,
+            group,
+            detail,
+            clientGroup,
+            managerId,
+          },
+          estado.managers,
+        );
+
+        guest.source = "Importação de planilha";
+
+        estado.guests.push(guest);
+
+        known.add(key);
+
+        added++;
+      }
+
+      /* =========================================
+         REGISTRAR IMPORTAÇÃO NO HISTÓRICO
+         ========================================= */
+
+      if (added || managersAdded) {
+        registrarHistorico(
+          estado,
+          req,
+          "planilha_importada",
+          {
+            added,
+            skipped,
+            managersAdded,
+          },
+        );
+      }
+
+      return {
+        alterou:
+          added > 0 ||
+          managersAdded > 0,
+
+        data: {
+          added,
+          skipped,
+          managersAdded,
+        },
+
+        status: 200,
+      };
+    }
+
+    /* =====================================================
+       5. EDITAR CONVIDADO
+       ===================================================== */
+
     case "editarConvidado": {
-      const atual = convidadoPorId(estado, id);
+      const atual = convidadoPorId(
+        estado,
+        id,
+      );
 
       const proximo = validarConvidado(
         entrada,
@@ -441,7 +714,10 @@ function aplicarAcao(estado, req, acao, entrada) {
         atual.id,
       );
 
-      Object.assign(atual, proximo);
+      Object.assign(
+        atual,
+        proximo,
+      );
 
       registrarHistorico(
         estado,
@@ -459,11 +735,15 @@ function aplicarAcao(estado, req, acao, entrada) {
       };
     }
 
-    /* -----------------------------------------------------
-       EXCLUIR CONVIDADO
-       ----------------------------------------------------- */
+    /* =====================================================
+       6. EXCLUIR CONVIDADO
+       ===================================================== */
+
     case "excluirConvidado": {
-      const atual = convidadoPorId(estado, id);
+      const atual = convidadoPorId(
+        estado,
+        id,
+      );
 
       estado.guests = estado.guests.filter(
         (item) => item.id !== id,
@@ -476,7 +756,9 @@ function aplicarAcao(estado, req, acao, entrada) {
         {
           guestId: id,
           name: atual.name,
-          wasPresent: Boolean(atual.arrivedAt),
+          wasPresent: Boolean(
+            atual.arrivedAt,
+          ),
         },
       );
 
@@ -489,21 +771,32 @@ function aplicarAcao(estado, req, acao, entrada) {
       };
     }
 
-    /* -----------------------------------------------------
-       CONFIRMAR OU DESFAZER PRESENÇA
-       ----------------------------------------------------- */
-    case "definirPresenca": {
-      const atual = convidadoPorId(estado, id);
+    /* =====================================================
+       7. CONFIRMAR OU DESFAZER PRESENÇA
+       ===================================================== */
 
-      if (typeof entrada.presente !== "boolean") {
+    case "definirPresenca": {
+      const atual = convidadoPorId(
+        estado,
+        id,
+      );
+
+      if (
+        typeof entrada.presente !== "boolean"
+      ) {
         throw new ErroValidacao(
           400,
           "Informe presente: true ou false.",
         );
       }
 
+      /* =========================================
+         EVITA CHECK-IN DUPLICADO
+         ========================================= */
+
       if (
-        Boolean(atual.arrivedAt) === entrada.presente
+        Boolean(atual.arrivedAt) ===
+        entrada.presente
       ) {
         return {
           alterou: false,
@@ -511,13 +804,18 @@ function aplicarAcao(estado, req, acao, entrada) {
         };
       }
 
-      // Usa o horário do servidor.
-      atual.arrivedAt = entrada.presente
-        ? new Date().toISOString()
-        : null;
+      /* =========================================
+         REGISTRA HORÁRIO DO SERVIDOR
+         ========================================= */
 
-      // Corrigir presença também reinicia a
-      // indicação de abertura do WhatsApp.
+      atual.arrivedAt =
+        entrada.presente
+          ? new Date().toISOString()
+          : null;
+
+      // Uma correção de presença também reinicia
+      // o indicador de conversa aberta.
+
       atual.noticeOpenedAt = null;
 
       registrarHistorico(
@@ -538,11 +836,18 @@ function aplicarAcao(estado, req, acao, entrada) {
       };
     }
 
-    /* -----------------------------------------------------
-       REGISTRAR ABERTURA DO WHATSAPP
-       ----------------------------------------------------- */
+    /* =====================================================
+       8. REGISTRAR ABERTURA DO WHATSAPP
+
+       Não envia mensagens automaticamente.
+       Apenas registra a abertura da conversa.
+       ===================================================== */
+
     case "registrarWhatsappAberto": {
-      const atual = convidadoPorId(estado, id);
+      const atual = convidadoPorId(
+        estado,
+        id,
+      );
 
       if (!atual.arrivedAt) {
         throw new ErroValidacao(
@@ -551,7 +856,9 @@ function aplicarAcao(estado, req, acao, entrada) {
         );
       }
 
-      if (atual.group !== "cliente") {
+      if (
+        atual.group !== "cliente"
+      ) {
         throw new ErroValidacao(
           400,
           "Somente clientes podem notificar gerentes.",
@@ -563,16 +870,18 @@ function aplicarAcao(estado, req, acao, entrada) {
         atual.managerId,
       );
 
-      if (!gerente.verified || !gerente.phone) {
+      if (
+        !gerente.verified ||
+        !gerente.phone
+      ) {
         throw new ErroValidacao(
           400,
           "Confira e valide o WhatsApp do gerente.",
         );
       }
 
-      // Não significa que a mensagem foi enviada.
-      // Registra apenas que a conversa foi aberta.
-      atual.noticeOpenedAt = new Date().toISOString();
+      atual.noticeOpenedAt =
+        new Date().toISOString();
 
       registrarHistorico(
         estado,
@@ -590,11 +899,14 @@ function aplicarAcao(estado, req, acao, entrada) {
       };
     }
 
-    /* -----------------------------------------------------
-       ADICIONAR GERENTE
-       ----------------------------------------------------- */
+    /* =====================================================
+       9. ADICIONAR GERENTE
+       ===================================================== */
+
     case "adicionarGerente": {
-      const gerente = validarGerente(entrada);
+      const gerente = validarGerente(
+        entrada,
+      );
 
       estado.managers.push(gerente);
 
@@ -615,18 +927,25 @@ function aplicarAcao(estado, req, acao, entrada) {
       };
     }
 
-    /* -----------------------------------------------------
-       EDITAR GERENTE
-       ----------------------------------------------------- */
+    /* =====================================================
+       10. EDITAR GERENTE
+       ===================================================== */
+
     case "editarGerente": {
-      const atual = gerentePorId(estado, id);
+      const atual = gerentePorId(
+        estado,
+        id,
+      );
 
       const proximo = validarGerente(
         entrada,
         atual,
       );
 
-      Object.assign(atual, proximo);
+      Object.assign(
+        atual,
+        proximo,
+      );
 
       registrarHistorico(
         estado,
@@ -644,26 +963,33 @@ function aplicarAcao(estado, req, acao, entrada) {
       };
     }
 
-    /* -----------------------------------------------------
-       EXCLUIR GERENTE
-       ----------------------------------------------------- */
-    case "excluirGerente": {
-      const gerente = gerentePorId(estado, id);
+    /* =====================================================
+       11. EXCLUIR GERENTE
+       ===================================================== */
 
-      if (
+    case "excluirGerente": {
+      const gerente = gerentePorId(
+        estado,
+        id,
+      );
+
+      const possuiClientes =
         estado.guests.some(
-          (item) => item.managerId === id,
-        )
-      ) {
+          (item) =>
+            item.managerId === id,
+        );
+
+      if (possuiClientes) {
         throw new ErroValidacao(
           409,
           "Este gerente possui clientes vinculados. Reatribua-os antes de excluir.",
         );
       }
 
-      estado.managers = estado.managers.filter(
-        (item) => item.id !== id,
-      );
+      estado.managers =
+        estado.managers.filter(
+          (item) => item.id !== id,
+        );
 
       registrarHistorico(
         estado,
@@ -684,9 +1010,10 @@ function aplicarAcao(estado, req, acao, entrada) {
       };
     }
 
-    /* -----------------------------------------------------
-       EDITAR EVENTO
-       ----------------------------------------------------- */
+    /* =====================================================
+       12. EDITAR NOME DO EVENTO
+       ===================================================== */
+
     case "editarEvento": {
       const eventTitle = limparTexto(
         entrada.eventTitle,
@@ -719,6 +1046,10 @@ function aplicarAcao(estado, req, acao, entrada) {
       };
     }
 
+    /* =====================================================
+       AÇÃO NÃO RECONHECIDA
+       ===================================================== */
+
     default:
       throw new ErroValidacao(
         400,
@@ -728,15 +1059,19 @@ function aplicarAcao(estado, req, acao, entrada) {
 }
 
 /* =========================================================
-   CONTROLLER — MRHs ABERTAS
+   CONTROLLER — MRHS ABERTAS
+
    MANTIDO SEM ALTERAÇÕES
    ========================================================= */
 
 export async function getMRHsAbertas(req, res) {
-  const controller = "MRHsAbertasController.getMRHsAbertas";
+  const controller =
+    "MRHsAbertasController.getMRHsAbertas";
+
   const startTime = Date.now();
 
-  const usuarioAtual = req.user?.nome || "Desconhecido";
+  const usuarioAtual =
+    req.user?.nome || "Desconhecido";
 
   try {
     console.info(
@@ -748,18 +1083,22 @@ export async function getMRHsAbertas(req, res) {
       },
     );
 
-    const resultado = await listarMRHsAbertas();
+    const resultado =
+      await listarMRHsAbertas();
 
     console.info(
       `[CONTROLLER] ${controller} - Requisição concluída com sucesso`,
       {
         usuario: usuarioAtual,
         total_mrhs: resultado.length,
-        tempo_execucao_ms: Date.now() - startTime,
+        tempo_execucao_ms:
+          Date.now() - startTime,
       },
     );
 
-    return res.status(200).json(resultado);
+    return res.status(200).json(
+      resultado,
+    );
   } catch (error) {
     console.error(
       `[CONTROLLER] ${controller} - Erro ao processar requisição`,
@@ -767,7 +1106,8 @@ export async function getMRHsAbertas(req, res) {
         usuario: usuarioAtual,
         mensagem: error.message,
         stack: error.stack,
-        tempo_execucao_ms: Date.now() - startTime,
+        tempo_execucao_ms:
+          Date.now() - startTime,
       },
     );
 
@@ -777,67 +1117,68 @@ export async function getMRHsAbertas(req, res) {
   }
 }
 
-
 /* =========================================================
    POST /api/melhorias
 
-   GRUPO GPS — LISTA DE PRESENÇA
+   Nome mantido: salvarMelhoria
 
-   Endpoint público:
-   - Não exige login
-   - Não exige token JWT
-   - Não exige req.user
+   Agora executa todas as operações
+   da lista de presença.
 
-   Todas as operações são armazenadas em:
-   data/presencas-evento.json
-========================================================= */
+   Endpoint público, sem JWT.
+   ========================================================= */
 
 export async function salvarMelhoria(req, res) {
-  const controller = "MRHsAbertasController.salvarMelhoria";
+  const controller =
+    "MRHsAbertasController.salvarMelhoria";
+
   const startTime = Date.now();
 
-  const usuarioAtual =
-    req.user?.nome ||
-    req.user?.name ||
-    "Recepção do Evento";
+  // Endpoint público.
+  // Não exige req.user.
 
   const entrada = req.body ?? {};
 
-  const acao = limparTexto(entrada.acao, 50);
+  const acao = limparTexto(
+    entrada.acao,
+    50,
+  );
 
   if (!acao) {
     return res.status(400).json({
       sucesso: false,
-      mensagem: "Informe a ação em req.body.acao.",
+      mensagem:
+        "Informe a ação em req.body.acao.",
     });
   }
 
   /* =========================================
      FILA DE OPERAÇÕES
 
-     Evita sobrescrita entre requisições
-     simultâneas no mesmo processo Node.js.
-  ========================================= */
+     Leitura, alteração e gravação sequenciais.
+     ========================================= */
 
-  const operacao = filaPresencas.then(async () => {
-    const estado = await lerPresencas();
+  const operacao = filaPresencas.then(
+    async () => {
+      const estado = await lerPresencas();
 
-    const resultado = aplicarAcao(
-      estado,
-      req,
-      acao,
-      entrada,
-    );
+      const resultado = aplicarAcao(
+        estado,
+        req,
+        acao,
+        entrada,
+      );
 
-    if (resultado.alterou) {
-      await gravarPresencas(estado);
-    }
+      if (resultado.alterou) {
+        await gravarPresencas(estado);
+      }
 
-    return {
-      ...resultado,
-      revision: estado.revision,
-    };
-  });
+      return {
+        ...resultado,
+        revision: estado.revision,
+      };
+    },
+  );
 
   filaPresencas = operacao.then(
     () => {},
@@ -848,12 +1189,13 @@ export async function salvarMelhoria(req, res) {
     const resultado = await operacao;
 
     console.info(
-      `[CONTROLLER] ${controller} - Operação concluída`,
+      `[CONTROLLER] ${controller} - Ação concluída`,
       {
-        usuario: usuarioAtual,
+        usuario: usuarioDaRequisicao(req),
         acao,
         revision: resultado.revision,
-        tempo_execucao_ms: Date.now() - startTime,
+        tempo_execucao_ms:
+          Date.now() - startTime,
       },
     );
 
@@ -861,48 +1203,50 @@ export async function salvarMelhoria(req, res) {
       .status(resultado.status || 200)
       .json({
         sucesso: true,
-        mensagem: "Operação realizada com sucesso.",
         data: resultado.data,
         revision: resultado.revision,
       });
-
   } catch (erro) {
-    console.error(
-      `[CONTROLLER] ${controller} - Erro`,
-      {
-        usuario: usuarioAtual,
-        acao,
-        mensagem: erro.message,
-        tempo_execucao_ms: Date.now() - startTime,
-      },
-    );
+    if (!(erro instanceof ErroValidacao)) {
+      console.error(
+        `[CONTROLLER] ${controller} - Erro`,
+        {
+          acao,
+          mensagem: erro.message,
+          stack: erro.stack,
+          tempo_execucao_ms:
+            Date.now() - startTime,
+        },
+      );
+    }
 
-    const status =
-      erro instanceof ErroValidacao
-        ? erro.status
-        : 500;
-
-    return res.status(status).json({
-      sucesso: false,
-      mensagem:
-        erro instanceof ErroValidacao
-          ? erro.message
-          : "Não foi possível processar a lista de presença.",
-    });
+    return res
+      .status(erro.status || 500)
+      .json({
+        sucesso: false,
+        mensagem:
+          erro instanceof ErroValidacao
+            ? erro.message
+            : "Não foi possível processar a lista de presença.",
+      });
   }
 }
 
-
 /* =========================================================
    CONTROLLER — MOVER MRH
+
    MANTIDO SEM ALTERAÇÕES
    ========================================================= */
 
 export async function moverMRH(req, res) {
-  const controller = "MRHsAbertasController.moverMRH";
+  const controller =
+    "MRHsAbertasController.moverMRH";
+
   const startTime = Date.now();
 
-  const usuarioAtual = req.user?.nome || "Desconhecido";
+  const usuarioAtual =
+    req.user?.nome || "Desconhecido";
+
   const { id } = req.params;
 
   try {
@@ -916,7 +1260,8 @@ export async function moverMRH(req, res) {
       },
     );
 
-    const resultado = await moverMRHParaDocumentacao(id);
+    const resultado =
+      await moverMRHParaDocumentacao(id);
 
     console.info(
       `[CONTROLLER] ${controller} - MRH movida com sucesso`,
@@ -924,7 +1269,8 @@ export async function moverMRH(req, res) {
         usuario: usuarioAtual,
         mrh_id: id,
         novo_time: resultado.time,
-        tempo_execucao_ms: Date.now() - startTime,
+        tempo_execucao_ms:
+          Date.now() - startTime,
       },
     );
 
@@ -942,7 +1288,8 @@ export async function moverMRH(req, res) {
         mrh_id: id,
         mensagem: error.message,
         stack: error.stack,
-        tempo_execucao_ms: Date.now() - startTime,
+        tempo_execucao_ms:
+          Date.now() - startTime,
       },
     );
 
