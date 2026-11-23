@@ -777,40 +777,48 @@ export async function getMRHsAbertas(req, res) {
   }
 }
 
+
 /* =========================================================
    POST /api/melhorias
 
-   Nome mantido: salvarMelhoria
-   Agora gerencia todas as operações de presença.
-   ========================================================= */
+   GRUPO GPS — LISTA DE PRESENÇA
+
+   Endpoint público:
+   - Não exige login
+   - Não exige token JWT
+   - Não exige req.user
+
+   Todas as operações são armazenadas em:
+   data/presencas-evento.json
+========================================================= */
 
 export async function salvarMelhoria(req, res) {
   const controller = "MRHsAbertasController.salvarMelhoria";
   const startTime = Date.now();
 
-  // A lista contém nomes, telefones e registros de presença.
-  // O endpoint deve estar protegido por autenticação real.
-  if (!req.user) {
-    return res.status(401).json({
-      sucesso: false,
-      mensagem:
-        "Autenticação obrigatória para gerenciar a lista de presença.",
-    });
-  }
+  const usuarioAtual =
+    req.user?.nome ||
+    req.user?.name ||
+    "Recepção do Evento";
 
   const entrada = req.body ?? {};
+
   const acao = limparTexto(entrada.acao, 50);
 
   if (!acao) {
     return res.status(400).json({
       sucesso: false,
-      mensagem:
-        "Informe a ação em req.body.acao.",
+      mensagem: "Informe a ação em req.body.acao.",
     });
   }
 
-  // Enfileira leitura, alteração e gravação.
-  // Evita sobrescritas concorrentes no mesmo processo Node.
+  /* =========================================
+     FILA DE OPERAÇÕES
+
+     Evita sobrescrita entre requisições
+     simultâneas no mesmo processo Node.js.
+  ========================================= */
+
   const operacao = filaPresencas.then(async () => {
     const estado = await lerPresencas();
 
@@ -831,7 +839,6 @@ export async function salvarMelhoria(req, res) {
     };
   });
 
-  // Recupera a fila mesmo quando uma operação falha.
   filaPresencas = operacao.then(
     () => {},
     () => {},
@@ -841,34 +848,41 @@ export async function salvarMelhoria(req, res) {
     const resultado = await operacao;
 
     console.info(
-      `[CONTROLLER] ${controller} - Ação concluída`,
+      `[CONTROLLER] ${controller} - Operação concluída`,
       {
-        usuario: usuarioDaRequisicao(req),
+        usuario: usuarioAtual,
         acao,
         revision: resultado.revision,
         tempo_execucao_ms: Date.now() - startTime,
       },
     );
 
-    return res.status(resultado.status || 200).json({
-      sucesso: true,
-      data: resultado.data,
-      revision: resultado.revision,
-    });
-  } catch (erro) {
-    if (!(erro instanceof ErroValidacao)) {
-      console.error(
-        `[CONTROLLER] ${controller} - Erro`,
-        {
-          acao,
-          mensagem: erro.message,
-          stack: erro.stack,
-          tempo_execucao_ms: Date.now() - startTime,
-        },
-      );
-    }
+    return res
+      .status(resultado.status || 200)
+      .json({
+        sucesso: true,
+        mensagem: "Operação realizada com sucesso.",
+        data: resultado.data,
+        revision: resultado.revision,
+      });
 
-    return res.status(erro.status || 500).json({
+  } catch (erro) {
+    console.error(
+      `[CONTROLLER] ${controller} - Erro`,
+      {
+        usuario: usuarioAtual,
+        acao,
+        mensagem: erro.message,
+        tempo_execucao_ms: Date.now() - startTime,
+      },
+    );
+
+    const status =
+      erro instanceof ErroValidacao
+        ? erro.status
+        : 500;
+
+    return res.status(status).json({
       sucesso: false,
       mensagem:
         erro instanceof ErroValidacao
@@ -877,6 +891,7 @@ export async function salvarMelhoria(req, res) {
     });
   }
 }
+
 
 /* =========================================================
    CONTROLLER — MOVER MRH
