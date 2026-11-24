@@ -1,4 +1,3 @@
-
 import { randomUUID } from "node:crypto";
 import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
@@ -10,18 +9,7 @@ import {
 } from "./mrhsabertas.service.js";
 
 /* =========================================================
-   MELHORIAS — AGORA GERENCIA A LISTA DE PRESENÇA DO EVENTO
-
-   Mantém o nome salvarMelhoria e o endpoint POST /api/melhorias.
-   Toda a lógica de check-in fica NESTE controller.
-
-   Cada chamada envia { acao: "...", ...dados }.
-   O JSON fica em data/presencas-evento.json, separado de melhorias.json.
-
-   Rota pública existente: POST /api/melhorias, sem JWT.
-   A fila protege operações concorrentes NO MESMO PROCESSO Node.
-   Em produção, limite acesso de rede e considere uma proteção
-   específica para mutações administrativas.
+   CONFIGURAÇÕES
    ========================================================= */
 
 const ARQUIVO_PRESENCAS = fileURLToPath(
@@ -75,7 +63,7 @@ function estadoVazio() {
 }
 
 /* =========================================================
-   LEITURA DO JSON
+   LEITURA DO JSON EXISTENTE
    ========================================================= */
 
 async function lerPresencas() {
@@ -178,9 +166,6 @@ function registrarHistorico(
    ========================================================= */
 
 function resumoPublico(estado) {
-  // O histórico detalhado fica guardado no servidor,
-  // sem ser exposto na interface.
-
   const { history, ...dados } = estado;
 
   return dados;
@@ -268,6 +253,9 @@ function validarConvidado(
     );
   }
 
+  // Preserva todos os campos existentes, incluindo
+  // presença, WhatsApp e eventual desistência.
+
   return {
     ...(existente || {
       id: randomUUID(),
@@ -344,9 +332,6 @@ function validarGerente(
       "WhatsApp inválido. Informe país, DDD e número.",
     );
   }
-
-  // "verified" indica apenas conferência humana.
-  // Não valida o número pela Meta.
 
   const verified = Boolean(
     entrada?.verified && phone,
@@ -510,12 +495,10 @@ function aplicarAcao(
     /* =====================================================
        4. IMPORTAÇÃO DE PLANILHA EXCEL
 
-       O React interpreta o Excel e envia JSON.
-
        Não exclui convidados existentes.
        Não altera check-ins realizados.
+       Não altera desistências existentes.
        Não valida telefones automaticamente.
-       Evita duplicados por nome + categoria.
        ===================================================== */
 
     case "importarConvidadosPlanilha": {
@@ -772,6 +755,76 @@ function aplicarAcao(
     }
 
     /* =====================================================
+       NOVO - REGISTRAR OU REVERTER DESISTÊNCIA
+
+       Não exclui o convidado.
+       Não modifica o registro de presença.
+       Não altera os dados dos demais convidados.
+       Compatível com os registros antigos.
+       ===================================================== */
+
+    case "definirDesistencia": {
+      const atual = convidadoPorId(
+        estado,
+        id,
+      );
+
+      if (typeof entrada.desistente !== "boolean") {
+        throw new ErroValidacao(
+          400,
+          "Informe desistente: true ou false.",
+        );
+      }
+
+      // Impede desistência de quem já realizou check-in.
+      // Nenhuma presença existente será removida.
+
+      if (atual.arrivedAt) {
+        throw new ErroValidacao(
+          409,
+          "Este convidado já possui presença confirmada.",
+        );
+      }
+
+      // Convidados antigos sem withdrawnAt são considerados
+      // automaticamente como não desistentes.
+
+      if (
+        Boolean(atual.withdrawnAt) ===
+        entrada.desistente
+      ) {
+        return {
+          alterou: false,
+          data: atual,
+        };
+      }
+
+      // Altera somente o campo de desistência.
+
+      atual.withdrawnAt =
+        entrada.desistente
+          ? new Date().toISOString()
+          : null;
+
+      registrarHistorico(
+        estado,
+        req,
+        entrada.desistente
+          ? "desistencia_registrada"
+          : "desistencia_revertida",
+        {
+          guestId: id,
+          name: atual.name,
+        },
+      );
+
+      return {
+        alterou: true,
+        data: atual,
+      };
+    }
+
+    /* =====================================================
        7. CONFIRMAR OU DESFAZER PRESENÇA
        ===================================================== */
 
@@ -787,6 +840,23 @@ function aplicarAcao(
         throw new ErroValidacao(
           400,
           "Informe presente: true ou false.",
+        );
+      }
+
+      /* =========================================
+         NOVO - PROTEÇÃO PARA DESISTENTES
+
+         Protege inclusive contra check-ins realizados
+         por dispositivos com a página desatualizada.
+         ========================================= */
+
+      if (
+        entrada.presente &&
+        atual.withdrawnAt
+      ) {
+        throw new ErroValidacao(
+          409,
+          "Reverta a desistência antes de confirmar a presença.",
         );
       }
 
@@ -1121,11 +1191,10 @@ export async function getMRHsAbertas(req, res) {
    POST /api/melhorias
 
    Nome mantido: salvarMelhoria
-
-   Agora executa todas as operações
-   da lista de presença.
-
    Endpoint público, sem JWT.
+
+   Mantém a fila de operações para evitar alterações
+   simultâneas no arquivo dentro do mesmo processo Node.
    ========================================================= */
 
 export async function salvarMelhoria(req, res) {
@@ -1133,9 +1202,6 @@ export async function salvarMelhoria(req, res) {
     "MRHsAbertasController.salvarMelhoria";
 
   const startTime = Date.now();
-
-  // Endpoint público.
-  // Não exige req.user.
 
   const entrada = req.body ?? {};
 
